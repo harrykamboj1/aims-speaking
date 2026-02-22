@@ -336,7 +336,7 @@ body {
 .title-line-1 {
   font-size: clamp(3rem, 8vw, 5rem);
   font-weight: 800;
-  background-image: linear-gradient(to right, #020817, #1E293B);
+  background-image: linear-gradient(135deg, #020817 0%, #1E293B 50%, #334155 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -344,20 +344,68 @@ body {
 }
 
 .title-line-2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 600;
   color: var(--text-primary);
+  margin-top: -0.1em;
 }
 
 .title-line-2 em {
   font-family: var(--font-display);
   font-style: italic;
-  font-weight: 500;
-  background-image: linear-gradient(to right, #3C83F6, #2563EB);
+  font-weight: 600;
+  background-image: linear-gradient(135deg, #3C83F6 0%, #6467F2 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+  padding-right: 0.05em;
+}
+
+.title-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 0.35em;
+  padding: 0.5em 1.1em;
+  background: var(--bg-surface-glass);
+  border: 1px solid rgba(60, 131, 246, 0.15);
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(60, 131, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transform: translateY(-2px);
+  transition: all var(--transition-base);
+  cursor: default;
+}
+
+.title-badge:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(60, 131, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-color: rgba(60, 131, 246, 0.3);
+}
+
+.badge-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.badge-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  letter-spacing: -0.02em;
 }
 
 .app-subtitle {
@@ -1658,7 +1706,7 @@ body {
 
   /* Landing Screen */
   #landing-screen {
-    padding: 1.5rem 1rem;
+    padding: 1rem 1rem;
   }
 
   .landing-content {
@@ -2002,4 +2050,85 @@ body {
 .theme-toggle:hover {
   transform: scale(1.1);
   background: rgba(128, 128, 128, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════ */
+.site-footer {
+  width: 100%;
+  padding: 1.25rem 2rem;
+  text-align: center;
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: auto;
+  z-index: 10;
+  position: relative;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* gap: 0.1rem; */
+  flex-wrap: wrap;
+}
+
+.footer-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.footer-text strong {
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.footer-divider {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--brand-primary);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.footer-link:hover {
+  background: rgba(60, 131, 246, 0.08);
+  border-color: rgba(60, 131, 246, 0.2);
+  color: var(--brand-secondary);
+  transform: translateY(-1px);
+}
+
+.footer-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Dark mode footer adjustments */
+[data-theme="dark"] .site-footer {
+  background: rgba(15, 23, 42, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .footer-link:hover {
+  background: rgba(60, 131, 246, 0.15);
 }

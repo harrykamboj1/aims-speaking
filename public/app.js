@@ -60,7 +60,7 @@ async function checkHealth() {
         }
     } catch {
         statusBar.className = 'status-bar error';
-        statusText.textContent = 'Serveur hors ligne.';
+        statusText.textContent = '';
     }
 }
 
