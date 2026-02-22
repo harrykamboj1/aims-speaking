@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aims TCF Canada Speaking</title>
+  <meta name="description"
+    content="Interactive AI-powered TCF Canada speaking practice tool. Practice all 3 tasks with real-time feedback and evaluation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  </script>
+</head>
+
+
+<body>
+  <!-- ─── Background Effects ─── -->
+  <div class="bg-effects">
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    <div class="gradient-orb orb-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <!-- ─── Status Bar ─── -->
+  <div id="status-bar" class="status-bar">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div class="status-dot"></div>
+      <span id="status-text"></span>
+    </div>
+    <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+      <i data-lucide="sun" class="icon-sun" style="display: none; width: 20px; height: 20px;"></i>
+      <i data-lucide="moon" class="icon-moon" style="width: 20px; height: 20px;"></i>
+    </button>
+  </div>
+  <!-- ─── Main App Container ─── -->
+  <div id="app">
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- LANDING SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="landing-screen" class="screen active">
+      <div class="landing-content">
+        <div class="logo-container">
+          <div class="aims-logo-container">
+            <!-- <div class="aims-logo-box">
+              <span class="aims-logo-letter">A</span>
+            </div> -->
+            <span class="aims-logo-text">Aims</span>
+          </div>
+          <h1 class="app-title">
+            <span class="title-line-1">TCF Canada</span>
+            <span class="title-line-2"><em>Speaking</em></span>
+          </h1>
+          <p class="app-subtitle">
+            Préparez votre expression orale avec un examinateur IA interactif
+          </p>
+        </div>
+
+        <div class="task-cards">
+          <button class="task-card" id="btn-task1" onclick="selectTask('task1')">
+            <div class="task-card-glow"></div>
+            <div class="task-number">01</div>
+            <div class="task-card-content">
+              <h3>Introduction personnelle</h3>
+              <p class="task-en">Personal Introduction</p>
+              <div class="task-meta">
+                <span class="task-duration"><i data-lucide="clock" class="meta-icon"></i> 2 min 30</span>
+                <span class="task-prep"><i data-lucide="file-text" class="meta-icon"></i> No prep</span>
+              </div>
+              <p class="task-desc">Présentez-vous librement : nom, métier, études, loisirs</p>
+            </div>
+            <div class="task-difficulty">
+              <span class="diff-dot active"></span>
+              <span class="diff-dot"></span>
+              <span class="diff-dot"></span>
+            </div>
+          </button>
+
+          <button class="task-card" id="btn-task2" onclick="selectTask('task2')">
+            <div class="task-card-glow"></div>
+            <div class="task-number">02</div>
+            <div class="task-card-content">
+              <h3>Exercice en interaction</h3>
+              <p class="task-en">Interactive Exchange</p>
+              <div class="task-meta">
+                <span class="task-duration"><i data-lucide="clock" class="meta-icon"></i> 3 min 30 + 2 min prep</span>
+                <span class="task-prep"><i data-lucide="target" class="meta-icon"></i> 8-12 questions</span>
+              </div>
+              <p class="task-desc">Posez des questions pour obtenir des informations</p>
+            </div>
+            <div class="task-difficulty">
+              <span class="diff-dot active"></span>
+              <span class="diff-dot active"></span>
+              <span class="diff-dot"></span>
+            </div>
+          </button>
+
+          <button class="task-card" id="btn-task3" onclick="selectTask('task3')">
+            <div class="task-card-glow"></div>
+            <div class="task-number">03</div>
+            <div class="task-card-content">
+              <h3>Argumentation</h3>
+              <p class="task-en">Argumentation</p>
+              <div class="task-meta">
+                <span class="task-duration"><i data-lucide="clock" class="meta-icon"></i> 4 min 40</span>
+                <span class="task-prep"><i data-lucide="zap" class="meta-icon"></i> Spontané</span>
+              </div>
+              <p class="task-desc">Défendez votre opinion et convainquez l'examinateur</p>
+            </div>
+            <div class="task-difficulty">
+              <span class="diff-dot active"></span>
+              <span class="diff-dot active"></span>
+              <span class="diff-dot active"></span>
+            </div>
+          </button>
+
+          <!-- <button class="task-card task-card-free" id="btn-task4" onclick="selectTask('task4')">
+            <div class="task-card-glow"></div>
+            <div class="task-number"><i data-lucide="sparkles" class="task-icon-bg"></i></div>
+            <div class="task-card-content">
+              <h3>Discussion libre</h3>
+              <p class="task-en">Free Discussion (Bonus Practice)</p>
+              <div class="task-meta">
+                <span class="task-duration"><i data-lucide="infinity" class="meta-icon"></i> No limit</span>
+                <span class="task-prep"><i data-lucide="messages-square" class="meta-icon"></i> Open chat</span>
+              </div>
+              <p class="task-desc">Pratiquez librement avec votre tuteur IA (hors format TCF)</p>
+            </div>
+            <div class="task-difficulty">
+              <span class="diff-dot active"></span>
+              <span class="diff-dot active"></span>
+              <span class="diff-dot active"></span>
+              <span class="diff-dot active"></span>
+            </div>
+          </button> -->
+        </div>
+
+        <div class="landing-footer">
+          <div class="info-badges">
+            <span class="badge"><i data-lucide="mic" class="badge-icon"></i> Speech Recognition</span>
+            <span class="badge"><i data-lucide="bot" class="badge-icon"></i> AI Examiner</span>
+            <span class="badge"><i data-lucide="bar-chart-2" class="badge-icon"></i> Detailed Evaluation</span>
+            <span class="badge"><i data-lucide="volume-2" class="badge-icon"></i> French TTS</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- PREP SCREEN (for Task 2 — 2 min preparation) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="prep-screen" class="screen">
+      <div class="prep-container">
+        <div class="prep-header">
+          <button class="btn-back" onclick="goBack()"><i data-lucide="arrow-left"
+              style="width: 16px; height: 16px; margin-right: 4px; vertical-align: -3px;"></i> Retour</button>
+          <h2 id="prep-task-name">Temps de préparation</h2>
+        </div>
+
+        <div class="prep-timer-container">
+          <svg class="prep-timer-svg" viewBox="0 0 200 200">
+            <circle class="prep-timer-bg" cx="100" cy="100" r="90" />
+            <circle id="prep-timer-circle" class="prep-timer-fill" cx="100" cy="100" r="90" />
+          </svg>
+          <div class="prep-timer-text">
+            <span id="prep-timer">2:00</span>
+            <span class="prep-timer-label">Préparation</span>
+          </div>
+        </div>
+
+        <div class="prep-topic-card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <h3 id="prep-topic-title" style="margin-bottom: 0;">Sujet</h3>
+            <button id="btn-prep-listen" class="btn-speak" onclick="listenToPrepTopic()"
+              style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-default); background: var(--bg-surface); cursor: pointer; display: flex; align-items: center; color: var(--text-secondary); font-size: 0.85rem; transition: var(--transition-fast);">
+              <i data-lucide="volume-2" style="width: 16px; height: 16px; margin-right: 4px;"></i> Écouter
+            </button>
+          </div>
+          <p id="prep-topic-description"></p>
+        </div>
+
+        <div class="prep-notes">
+          <label for="prep-notepad"><i data-lucide="edit-3"
+              style="width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px;"></i> Vos notes (comme au vrai
+            examen)</label>
+          <textarea id="prep-notepad"
+            placeholder="Prenez vos notes ici... vous pouvez les utiliser pendant l'épreuve"></textarea>
+        </div>
+
+        <button id="btn-skip-prep" class="btn-primary pulse-btn" onclick="skipPrep()">
+          Commencer l'épreuve →
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- EXAM SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="exam-screen" class="screen">
+      <div class="exam-container">
+        <!-- Top Bar -->
+        <div class="exam-top-bar">
+          <div class="exam-task-info">
+            <span id="exam-task-label" class="exam-task-badge">Tâche 1</span>
+            <span id="exam-task-name">Entretien dirigé</span>
+          </div>
+          <div class="exam-timer" id="exam-timer-container">
+            <div class="timer-ring">
+              <svg viewBox="0 0 40 40">
+                <circle class="timer-ring-bg" cx="20" cy="20" r="18" />
+                <circle id="exam-timer-ring" class="timer-ring-fill" cx="20" cy="20" r="18" />
+              </svg>
+            </div>
+            <span id="exam-timer" class="timer-text">2:00</span>
+            <button id="btn-timer-toggle" class="btn-timer-toggle" onclick="toggleExamTimer()"
+              title="Pause / Resume timer">
+              <i data-lucide="pause" id="timer-pause-icon" style="width: 16px; height: 16px;"></i>
+              <i data-lucide="play" id="timer-play-icon" class="hidden-icon" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+          <button class="btn-end-exam" id="btn-end-exam" onclick="endExam()"
+            style="display: flex; align-items: center;">
+            Terminer <i data-lucide="x" style="width: 16px; height: 16px; margin-left: 4px;"></i>
+          </button>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-area" id="chat-area">
+          <div id="chat-messages" class="chat-messages">
+            <!-- Messages will be dynamically added here -->
+          </div>
+        </div>
+
+        <!-- Feedback Panel (slides in) -->
+        <div id="feedback-panel" class="feedback-panel hidden">
+          <div class="feedback-header">
+            <span><i data-lucide="lightbulb"
+                style="width: 16px; height: 16px; margin-right: 4px; vertical-align: -2px;"></i> Quick Feedback</span>
+            <button onclick="closeFeedback()" class="feedback-close"><i data-lucide="x"
+                style="width: 16px; height: 16px;"></i></button>
+          </div>
+          <div id="feedback-content" class="feedback-content"></div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+          <div class="speech-status" id="speech-status">
+            <div class="speech-waves" id="speech-waves">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <span id="speech-status-text">Cliquez sur le micro pour parler</span>
+          </div>
+
+          <div class="input-controls">
+            <div class="text-input-wrapper">
+              <textarea id="text-input" placeholder="Tapez votre réponse en français ou utilisez le micro" rows="1"
+                onkeydown="handleKeyDown(event)"></textarea>
+            </div>
+
+            <div class="input-buttons">
+              <button id="btn-mic" class="btn-mic" onclick="toggleMic()" title="Parler (Speech-to-Text)">
+                <i data-lucide="mic" class="mic-icon"></i>
+                <div class="mic-pulse"></div>
+              </button>
+
+              <button id="btn-send" class="btn-send" onclick="sendMessage()" title="Envoyer">
+                <i data-lucide="send" style="width: 20px; height: 20px; margin-right: 2px;"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="input-hints">
+            <span><i data-lucide="info" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px;"></i>
+              Tip: Speak naturally in French. Press <kbd>Enter</kbd> to send, <kbd>Shift+Enter</kbd> for new
+              line</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- EVALUATION SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="eval-screen" class="screen">
+      <div class="eval-container">
+        <div class="eval-header">
+          <div class="eval-icon"><i data-lucide="bar-chart-2"
+              style="width: 32px; height: 32px; color: var(--brand-primary);"></i></div>
+          <h2>Évaluation de votre performance</h2>
+          <p class="eval-subtitle" id="eval-task-info">Tâche 1 : Entretien dirigé</p>
+        </div>
+
+        <div id="eval-loading" class="eval-loading">
+          <div class="eval-spinner"></div>
+          <p>L'examinateur analyse votre performance...</p>
+          <p class="eval-loading-sub">Cela peut prendre quelques instants</p>
+        </div>
+
+        <div id="eval-results" class="eval-results hidden">
+          <div id="eval-content" class="eval-content"></div>
+        </div>
+
+        <div class="eval-actions">
+          <button class="btn-primary" onclick="goHome()">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px; margin-right: 6px;"></i> Retour à l'accueil
+          </button>
+          <button class="btn-secondary" onclick="retryTask()">
+            <i data-lucide="rotate-ccw" style="width: 16px; height: 16px; margin-right: 6px;"></i> Réessayer cette tâche
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="app.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+
+</html>
