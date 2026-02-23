@@ -6,8 +6,8 @@ require('dotenv').config();
 
 // ─── Groq Configuration ───────────────────────────────────────────────────────
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = 'llama-3.1-8b-instant';           // Fast & cheap for conversations
-const GROQ_EVAL_MODEL = 'llama-3.3-70b-versatile';    // Premium model for evaluations only
+const GROQ_MODEL = 'llama-3.3-70b-versatile';         // Better instruction-following for strict examiner behavior
+const GROQ_EVAL_MODEL = 'openai/gpt-oss-120b';        // Most powerful model on Groq — for accurate evaluations
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 if (!GROQ_API_KEY) {
@@ -138,6 +138,16 @@ TON RÔLE EXACT :
 - Tu restes professionnel(le), bienveillant(e) et naturel(le)
 - Tes réponses sont COURTES (2-3 phrases maximum)
 
+RÈGLE CRITIQUE — COMPORTEMENT D'EXAMINATEUR STRICT :
+- Tu es un EXAMINATEUR, PAS un tuteur. Tu ne donnes AUCUN commentaire sur les réponses du candidat.
+- NE RÉSUME JAMAIS ce que le candidat a dit. NE PARAPHRASE JAMAIS ses réponses. NE RÉPÈTE JAMAIS ses idées.
+- NE DIS JAMAIS des choses comme "Vous avez parlé de...", "C'est intéressant que vous...", "Je comprends que vous...", "Merci pour cette réponse sur..."
+- Va DIRECTEMENT à ta question de relance, sans aucune introduction, aucun résumé, aucun commentaire.
+- MAUVAIS EXEMPLE : "Merci, vous avez parlé de votre travail en informatique et de vos loisirs. C'est très intéressant. Maintenant, dites-moi, quels sont vos projets ?"
+- BON EXEMPLE : "Et quels sont vos projets d'avenir au Canada ?"
+- BON EXEMPLE : "Parlez-moi un peu plus de votre famille."
+- Tu poses la question DIRECTEMENT, comme un vrai examinateur TCF.
+
 MESSAGE D'OUVERTURE :
 Présente-toi comme examinateur, puis dis quelque chose comme :
 "Bonjour, bienvenue à l'épreuve d'expression orale du TCF Canada. Pour commencer, je vous invite à vous présenter. Parlez-moi de vous : votre nom, votre métier ou vos études, vos loisirs, votre famille... Prenez votre temps et parlez librement."
@@ -240,10 +250,13 @@ TON RÔLE EXACT :
 - Tu poses 2-3 questions de relance au total, UNE À LA FOIS, en les adaptant à chaque réponse
 - Tu es professionnel(le) et neutre
 
-RÈGLE CRITIQUE SUR LA LONGUEUR DES RÉPONSES :
+RÈGLE CRITIQUE — COMPORTEMENT D'EXAMINATEUR STRICT :
+- Tu es un EXAMINATEUR, PAS un tuteur. Tu agis comme un examinateur professionnel du TCF.
 - Tes questions de suivi doivent faire 1 à 2 PHRASES MAXIMUM. Jamais plus.
-- NE RÉPÈTE JAMAIS ce que le candidat a dit. NE RÉSUME JAMAIS sa réponse. NE PARAPHRASE JAMAIS ses arguments.
-- Va DIRECTEMENT à ta question, sans introduction ni commentaire.
+- NE RÉSUME JAMAIS ce que le candidat a dit. NE PARAPHRASE JAMAIS ses arguments. NE RÉPÈTE JAMAIS ses idées.
+- NE COMMENTE JAMAIS la qualité de sa réponse. NE DIS JAMAIS "C'est intéressant", "Bon point", "Merci pour cette réponse".
+- NE DIS JAMAIS des choses comme "Vous avez parlé de...", "Vous avez mentionné que...", "Je comprends que vous pensez que...".
+- Va DIRECTEMENT à ta question, sans AUCUNE introduction, AUCUN résumé, AUCUN commentaire.
 - MAUVAIS EXEMPLE : "Vous avez parlé de l'importance de la technologie dans l'éducation et vous avez mentionné que les étudiants apprennent mieux avec des outils numériques. C'est un point intéressant. Mais que pensez-vous des inconvénients ?"
 - BON EXEMPLE : "Mais quels seraient les inconvénients de cette approche ?"
 - BON EXEMPLE : "Et pour ceux qui n'ont pas accès à Internet ?"
@@ -441,7 +454,14 @@ async function evaluatePerformance(session) {
     .map(m => `${m.role === 'user' ? 'CANDIDAT' : 'EXAMINATEUR'} : ${m.content}`)
     .join('\n\n');
 
-  const evalPrompt = `Tu es un PANEL de 3 évaluateurs experts certifiés du TCF Canada (Test de Connaissance du Français pour le Canada). Tu dois fournir une évaluation COMPLÈTE et DÉTAILLÉE de la performance du candidat.
+  const evalPrompt = `Tu es un PANEL de 3 évaluateurs experts certifiés du TCF Canada (Test de Connaissance du Français pour le Canada). Tu dois fournir une évaluation PRÉCISE, HONNÊTE et DÉTAILLÉE.
+
+⚠️ RÈGLE FONDAMENTALE DE NOTATION :
+- Évalue UNIQUEMENT ce que le candidat a RÉELLEMENT dit dans la transcription.
+- NE SUPPOSE PAS que le candidat connaît des choses qu'il n'a pas dites.
+- NE GONFLE PAS les notes. Un candidat qui fait beaucoup d'erreurs ne peut PAS avoir plus de 10/20.
+- Sois HONNÊTE : si le niveau est faible, dis-le clairement tout en étant encourageant.
+- Compare TOUJOURS les réponses du candidat à ce qu'un locuteur natif dirait.
 
 TYPE D'ÉPREUVE : ${TASK_DEFINITIONS[session.taskType].name}
 
@@ -452,42 +472,72 @@ ${conversationLog}
 ${userTexts}
 
 ═══════════════════════════════════════════════════
+BARÈME DE NOTATION — RÉFÉRENTIEL OBLIGATOIRE :
+═══════════════════════════════════════════════════
+
+Utilise ce barème STRICT pour chaque critère /5 :
+- 1/5 : Très insuffisant — Le candidat ne parvient pas à communiquer. Phrases incompréhensibles ou absentes.
+- 2/5 : Insuffisant — Communication très limitée. Nombreuses erreurs qui gênent la compréhension. Vocabulaire très basique.
+- 3/5 : Passable — Communication basique possible mais avec des erreurs fréquentes. Vocabulaire limité. Structures simples.
+- 4/5 : Bien — Bonne maîtrise avec quelques erreurs occasionnelles. Vocabulaire varié. Structures complexes tentées.
+- 5/5 : Excellent — Maîtrise quasi-native. Très rares erreurs. Vocabulaire riche et précis. Aisance naturelle.
+
+Correspondance note globale /20 → Niveau CECRL → CLB :
+- 0-4/20 → A1 → CLB 1-2 : Ne peut pas communiquer en français
+- 5-7/20 → A2 → CLB 3-4 : Communication très basique avec beaucoup d'erreurs
+- 8-10/20 → B1 → CLB 5-6 : Peut communiquer sur des sujets familiers avec des erreurs
+- 11-13/20 → B1+ → CLB 7 : Communication correcte mais manque de nuance
+- 14-16/20 → B2 → CLB 8-9 : Bonne maîtrise, peut argumenter et nuancer
+- 17-18/20 → C1 → CLB 10-11 : Maîtrise avancée, expression fluide et précise
+- 19-20/20 → C2 → CLB 12 : Maîtrise quasi-native exceptionnelle
+
+═══════════════════════════════════════════════════
 INSTRUCTIONS D'ÉVALUATION — FORMAT OBLIGATOIRE :
 ═══════════════════════════════════════════════════
 
 ## 📊 SCORES OFFICIELS TCF
 
-Donne les scores suivants :
-- Note globale : X/20
+Avant de donner les scores, fais un BILAN MENTAL :
+1. Combien de phrases le candidat a-t-il produites ?
+2. Combien d'erreurs de grammaire ?
+3. Le vocabulaire est-il riche ou basique ?
+4. Les réponses sont-elles développées ou minimales ?
+
+Puis donne :
+- Note globale : X/20 (justifie brièvement pourquoi ce score)
 - Niveau CECRL estimé : (A1, A2, B1, B2, C1, C2)
 - Niveau CLB estimé : (1 à 12)
 
 ## 📋 ÉVALUATION PAR CRITÈRE
 
-Pour CHAQUE critère, donne une note /5 et une analyse détaillée :
+Pour CHAQUE critère, donne une note /5 selon le barème ci-dessus et cite des EXEMPLES PRÉCIS tirés de la transcription :
 
 ### 1. Adéquation à la situation (X/5)
-- Ce qui est bien fait
-- Ce qui manque ou est insuffisant
+- Le candidat a-t-il répondu au sujet demandé ?
+- A-t-il utilisé le registre approprié (formel/informel) ?
+- CITE des exemples précis de la transcription
 
 ### 2. Maîtrise linguistique — Grammaire & Vocabulaire (X/5)
-- Points positifs
-- Erreurs grammaticales spécifiques (liste chaque erreur avec la correction)
+- LISTE CHAQUE erreur grammaticale trouvée dans la transcription
+- Évalue la variété du vocabulaire (basique vs. riche)
+- CITE des exemples précis
 
 ### 3. Cohérence et structuration du discours (X/5)
-- Organisation des idées
-- Utilisation de connecteurs logiques
+- Les idées sont-elles organisées logiquement ?
+- Le candidat utilise-t-il des connecteurs ? Lesquels ?
+- CITE des exemples précis
 
 ### 4. Aisance et fluidité (X/5)
-- Capacité à développer les réponses
-- Richesse du vocabulaire utilisé
+- Les réponses sont-elles développées (3+ phrases) ou minimales (1-2 mots) ?
+- Le candidat prend-il des initiatives dans la conversation ?
+- CITE des exemples précis
 
 ## ✍️ CORRECTIONS DÉTAILLÉES
 
-Pour chaque erreur du candidat :
-- ❌ Ce que le candidat a dit
+Pour CHAQUE erreur du candidat (ne manque AUCUNE erreur) :
+- ❌ Ce que le candidat a dit (citation exacte)
 - ✅ La forme correcte
-- 💡 Explication de la règle
+- 💡 Explication de la règle grammaticale
 
 ## 📝 RÉPONSES MODÈLES / DEMO ANSWERS
 
@@ -500,18 +550,18 @@ Pour chaque question posée par l'examinateur, fournis une RÉPONSE MODÈLE de n
 
 ## 🎯 PLAN D'AMÉLIORATION
 
-Donne exactement 5 conseils CONCRETS et ACTIONNABLES pour améliorer le niveau du candidat, du plus important au moins important.
+Donne exactement 5 conseils CONCRETS et ACTIONNABLES pour améliorer le niveau du candidat, du plus important au moins important. Chaque conseil doit inclure un EXEMPLE PRATIQUE.
 
 ## 🇬🇧 ENGLISH SUMMARY
 
 Provide a brief English translation of the key findings: overall score, level, main strengths, main weaknesses, and 3 priority tips.
 
-IMPORTANT : Sois très détaillé mais aussi encourageant. L'objectif est d'aider le candidat à progresser. Utilise des émojis pour rendre le rapport visuel et agréable à lire.`;
+IMPORTANT : Sois HONNÊTE dans ta notation. Un score gonflé n'aide pas le candidat. Mais sois aussi encourageant — mentionne ce qui va BIEN. Utilise des émojis pour rendre le rapport visuel et agréable à lire.`;
 
   const messages = [{ role: 'user', content: evalPrompt }];
 
   try {
-    return await chatWithGroq(messages, { temperature: 0.3, max_tokens: 3000, model: GROQ_EVAL_MODEL });
+    return await chatWithGroq(messages, { temperature: 0.2, max_tokens: 4096, model: GROQ_EVAL_MODEL });
   } catch (error) {
     console.error('Evaluation error:', error);
     return 'Erreur lors de l\'évaluation. Veuillez réessayer.';
@@ -619,7 +669,7 @@ app.post('/api/session/message', async (req, res) => {
   session.userMessages.push(message);
 
   try {
-    const groqOptions = (session.taskType === 'task2' || session.taskType === 'task3') ? { max_tokens: 100 } : {};
+    const groqOptions = (session.taskType === 'task1' || session.taskType === 'task2' || session.taskType === 'task3') ? { max_tokens: 100 } : {};
     const response = await chatWithGroq(session.messages, groqOptions);
     session.messages.push({ role: 'assistant', content: response });
     session.aiMessages.push(response);

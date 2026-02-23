@@ -76,31 +76,72 @@ function initSpeechRecognition() {
     }
 
     state.recognition = new SpeechRecognition();
-    state.recognition.lang = 'fr-FR';
+    state.recognition.lang = 'fr-CA';          // Canadian French for TCF Canada
     state.recognition.continuous = true;
     state.recognition.interimResults = true;
-    state.recognition.maxAlternatives = 1;
+    state.recognition.maxAlternatives = 3;     // More alternatives = better accuracy
 
     let finalTranscript = '';
     let silenceTimeout = null;
+    let restartAttempts = 0;
+    state.isFirstStart = true;
+    const MAX_RESTART_ATTEMPTS = 5;
 
     state.recognition.onstart = () => {
         state.isRecording = true;
         document.getElementById('btn-mic').classList.add('recording');
         document.getElementById('speech-waves').classList.add('active');
-        document.getElementById('speech-status-text').textContent = 'Listening... speak in French';
-        finalTranscript = '';
+        document.getElementById('speech-status-text').textContent = '🎙️ Listening... speak in French';
+
+        // Only reset transcript on a fresh start (not on auto-restart)
+        if (state.isFirstStart) {
+            finalTranscript = '';
+            state.isFirstStart = false;
+        }
+        restartAttempts = 0;
     };
 
     state.recognition.onresult = (event) => {
         let interimTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-                finalTranscript += transcript + ' ';
+                // Pick the highest-confidence alternative
+                let bestTranscript = event.results[i][0].transcript;
+                let bestConfidence = event.results[i][0].confidence;
+
+                for (let alt = 1; alt < event.results[i].length; alt++) {
+                    if (event.results[i][alt].confidence > bestConfidence) {
+                        bestConfidence = event.results[i][alt].confidence;
+                        bestTranscript = event.results[i][alt].transcript;
+                    }
+                }
+
+                // Only accept results with reasonable confidence
+                if (bestConfidence >= 0.4) {
+                    finalTranscript += bestTranscript + ' ';
+
+                    // Show confidence indicator to user
+                    const pct = Math.round(bestConfidence * 100);
+                    const icon = pct >= 80 ? '🟢' : pct >= 60 ? '🟡' : '🟠';
+                    document.getElementById('speech-status-text').textContent =
+                        `${icon} Confidence: ${pct}% — keep speaking`;
+                } else {
+                    // Low confidence — warn user
+                    document.getElementById('speech-status-text').textContent =
+                        '⚠️ Low confidence — speak louder and closer to the mic';
+                }
             } else {
-                interimTranscript = transcript;
+                // For interim results, pick the best alternative too
+                let bestInterim = event.results[i][0].transcript;
+                let bestConf = event.results[i][0].confidence || 0;
+                for (let alt = 1; alt < event.results[i].length; alt++) {
+                    if ((event.results[i][alt].confidence || 0) > bestConf) {
+                        bestConf = event.results[i][alt].confidence || 0;
+                        bestInterim = event.results[i][alt].transcript;
+                    }
+                }
+                interimTranscript = bestInterim;
             }
         }
 
@@ -111,30 +152,84 @@ function initSpeechRecognition() {
         // Reset silence timeout
         clearTimeout(silenceTimeout);
         silenceTimeout = setTimeout(() => {
-            document.getElementById('speech-status-text').textContent = 'Silence detected... click mic to stop or keep speaking';
+            document.getElementById('speech-status-text').textContent =
+                '🔇 Silence detected... click mic to stop or keep speaking';
         }, 3000);
     };
 
     state.recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
+
         if (event.error === 'not-allowed') {
-            document.getElementById('speech-status-text').textContent = '⚠️ Microphone access denied. Please allow microphone access.';
+            document.getElementById('speech-status-text').textContent =
+                '⚠️ Microphone access denied. Please allow microphone access.';
+            stopRecording();
+        } else if (event.error === 'no-speech') {
+            // No speech detected — don't kill the session, just notify
+            document.getElementById('speech-status-text').textContent =
+                '🎙️ No speech detected — try speaking louder or closer to mic';
+            // The onend handler will auto-restart
+        } else if (event.error === 'network') {
+            document.getElementById('speech-status-text').textContent =
+                '⚠️ Network issue — check your internet connection';
+            stopRecording();
         } else if (event.error !== 'aborted') {
-            document.getElementById('speech-status-text').textContent = `⚠️ Error: ${event.error}. Try again.`;
+            document.getElementById('speech-status-text').textContent =
+                `⚠️ Error: ${event.error}. Try again.`;
+            stopRecording();
         }
-        stopRecording();
     };
 
     state.recognition.onend = () => {
         if (state.isRecording) {
-            // Restart if still recording (continuous mode workaround)
-            try {
-                state.recognition.start();
-            } catch (e) {
+            restartAttempts++;
+            if (restartAttempts > MAX_RESTART_ATTEMPTS) {
+                document.getElementById('speech-status-text').textContent =
+                    '⚠️ Recognition keeps stopping. Click mic to restart.';
                 stopRecording();
+                return;
             }
+
+            // Debounced restart to avoid rapid restart loops
+            setTimeout(() => {
+                if (state.isRecording) {
+                    try {
+                        state.recognition.start();
+                    } catch (e) {
+                        stopRecording();
+                    }
+                }
+            }, 150);
         }
     };
+
+    // Pre-warm the microphone with noise reduction settings
+    prewarmMicrophone();
+}
+
+/**
+ * Request microphone access with noise reduction settings.
+ * This primes the browser to use echo cancellation, noise suppression,
+ * and auto gain control — which significantly improves recognition accuracy.
+ */
+async function prewarmMicrophone() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                channelCount: 1,
+                sampleRate: { ideal: 16000 }    // 16kHz is optimal for speech recognition
+            }
+        });
+        // Keep the stream reference so the browser retains the settings
+        state.micStream = stream;
+        console.log('Microphone pre-warmed with noise reduction');
+    } catch (err) {
+        console.warn('Could not pre-warm microphone:', err.message);
+        // Not fatal — recognition will still work, just without the optimization
+    }
 }
 
 function stopRecording() {
@@ -159,12 +254,16 @@ function toggleMic() {
         // Stop any TTS
         state.speechSynthesis.cancel();
 
+        // Mark as a fresh start so transcript is cleared
+        state.isFirstStart = true;
+
         try {
             state.recognition.start();
         } catch (e) {
-            // Already started
+            // Already started — stop and retry
             stopRecording();
             setTimeout(() => {
+                state.isFirstStart = true;
                 try { state.recognition.start(); } catch (e2) { }
             }, 200);
         }
@@ -504,12 +603,15 @@ function addMessage(role, text, withTTS = false) {
 
     const avatar = role === 'examiner' ? '<i data-lucide="graduation-cap" style="width: 20px; height: 20px;"></i>' : '<i data-lucide="user" style="width: 20px; height: 20px;"></i>';
 
+    // Safely encode the text for use in data attributes (avoids breaking on quotes, backticks, etc.)
+    const safeText = text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     let actionsHTML = '';
     if (role === 'examiner') {
         const speakBtnId = 'speak-' + Date.now();
         actionsHTML = `
       <div class="message-actions">
-        <button class="btn-speak" id="${speakBtnId}" onclick="speakFrench(\`${text.replace(/`/g, "'").replace(/\\/g, '\\\\')}\`, document.getElementById('${speakBtnId}'))">
+        <button class="btn-speak" id="${speakBtnId}" data-speak-text="${safeText}" onclick="speakFrench(this.dataset.speakText, this)">
           <i data-lucide="volume-2" style="width: 14px; height: 14px; margin-right: 4px;"></i> Listen
         </button>
       </div>
@@ -517,7 +619,7 @@ function addMessage(role, text, withTTS = false) {
     } else {
         actionsHTML = `
       <div class="message-actions">
-        <button class="msg-action-btn" onclick="getFeedback(\`${text.replace(/`/g, "'").replace(/\\/g, '\\\\')}\`)">
+        <button class="msg-action-btn" data-feedback-text="${safeText}" onclick="getFeedback(this.dataset.feedbackText)">
           <i data-lucide="lightbulb" style="width: 14px; height: 14px; margin-right: 4px;"></i> Check my French
         </button>
       </div>
