@@ -420,7 +420,7 @@ async function selectTask(taskType) {
             startExam(data.examinerOpening);
         }
     } catch (error) {
-        alert(`Error: ${error.message}\n\nCheck server logs for Groq API issues.`);
+        alert(error.message);
     } finally {
         btn.style.opacity = '1';
         btn.style.pointerEvents = 'auto';
