@@ -771,6 +771,11 @@ app.post('/api/session/end', requireUser, async (req, res) => {
   res.json({ evaluation });
 });
 
+// Simple ping for monitors
+app.get('/ping', (req, res) => {
+  res.status(200).send('ping');
+});
+
 // Health check
 app.get('/api/health', async (req, res) => {
   try {
