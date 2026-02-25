@@ -51,12 +51,19 @@ async function requireUser(req, res, next) {
         // Query the database to ensure the user hasn't been deactivated
         const { data: user } = await supabase
             .from('users')
-            .select('is_active')
+            .select('is_active, last_login')
             .eq('id', decoded.id)
             .single();
 
         if (!user || !user.is_active) {
             return res.status(403).json({ error: 'Your account has been deactivated. Please contact the administrator.' });
+        }
+
+        const tokenTime = new Date(decoded.session_id).getTime();
+        const dbTime = new Date(user.last_login).getTime();
+
+        if (!decoded.session_id || isNaN(tokenTime) || isNaN(dbTime) || tokenTime !== dbTime) {
+            return res.status(401).json({ error: 'Session expired. You logged in from another device.' });
         }
     } catch (err) {
         return res.status(500).json({ error: 'Server error verifying user status' });
@@ -313,17 +320,20 @@ router.post('/user/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials. Please check your email/mobile and password.' });
         }
 
+        const loginTime = new Date().toISOString();
+
         const token = generateToken({
             id: user.id,
             email: user.email,
             mobile: user.mobile,
-            role: 'user'
+            role: 'user',
+            session_id: loginTime
         });
 
         // Update last_login
         await supabase
             .from('users')
-            .update({ last_login: new Date().toISOString() })
+            .update({ last_login: loginTime })
             .eq('id', user.id);
 
         res.json({
@@ -354,11 +364,18 @@ router.get('/verify', async (req, res) => {
         try {
             const { data: user } = await supabase
                 .from('users')
-                .select('is_active')
+                .select('is_active, last_login')
                 .eq('id', decoded.id)
                 .single();
             if (!user || !user.is_active) {
                 return res.status(401).json({ valid: false, reason: 'account_inactive' });
+            }
+
+            const tokenTime = new Date(decoded.session_id).getTime();
+            const dbTime = new Date(user.last_login).getTime();
+
+            if (!decoded.session_id || isNaN(tokenTime) || isNaN(dbTime) || tokenTime !== dbTime) {
+                return res.status(401).json({ valid: false, reason: 'session_expired' });
             }
         } catch (err) {
             return res.status(500).json({ valid: false });
