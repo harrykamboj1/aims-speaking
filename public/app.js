@@ -1,6 +1,17 @@
-/* ═══════════════════════════════════════════════════════════
-   TCF Canada Speaking Tutor - Application Logic
-   ═══════════════════════════════════════════════════════════ */
+// ─── Auth ──────────────────────────────────────────────────
+const userToken = localStorage.getItem('user_token');
+
+function getAuthHeaders() {
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+    };
+}
+
+function logout() {
+    localStorage.removeItem('user_token');
+    window.location.href = '/login';
+}
 
 // ─── State ─────────────────────────────────────────────────
 const state = {
@@ -32,7 +43,27 @@ const state = {
 };
 
 // ─── Initialize ────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Verify user is authenticated
+    if (!userToken) {
+        window.location.href = '/login';
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/verify', {
+            headers: { 'Authorization': `Bearer ${userToken}` }
+        });
+        const data = await res.json();
+        if (!data.valid || data.role !== 'user') {
+            logout();
+            return;
+        }
+    } catch {
+        logout();
+        return;
+    }
+
     checkHealth();
     initSpeechRecognition();
     loadFrenchVoice();
@@ -362,7 +393,7 @@ async function selectTask(taskType) {
     try {
         const res = await fetch('/api/session/start', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ taskType })
         });
 
@@ -726,7 +757,7 @@ async function sendMessage() {
     try {
         const res = await fetch('/api/session/message', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ sessionId: state.sessionId, message })
         });
 
@@ -769,7 +800,7 @@ async function getFeedback(text) {
     try {
         const res = await fetch('/api/feedback', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ text })
         });
 
@@ -856,7 +887,7 @@ async function endExam() {
     try {
         const res = await fetch('/api/session/end', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ sessionId: state.sessionId })
         });
 

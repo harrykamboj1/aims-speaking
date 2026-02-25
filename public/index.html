@@ -38,10 +38,17 @@
       <div class="status-dot"></div>
       <span id="status-text"></span>
     </div>
-    <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
-      <i data-lucide="sun" class="icon-sun" style="display: none; width: 20px; height: 20px;"></i>
-      <i data-lucide="moon" class="icon-moon" style="width: 20px; height: 20px;"></i>
-    </button>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode"
+        style="background: none; border: none; color: var(--text-muted); cursor: pointer;">
+        <i data-lucide="sun" class="icon-sun" style="display: none; width: 20px; height: 20px;"></i>
+        <i data-lucide="moon" class="icon-moon" style="width: 20px; height: 20px;"></i>
+      </button>
+      <button class="theme-toggle" onclick="logout()" title="Sign Out"
+        style="background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center;">
+        <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+      </button>
+    </div>
   </div>
   <!-- ─── Main App Container ─── -->
   <div id="app">

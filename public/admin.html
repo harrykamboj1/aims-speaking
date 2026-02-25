@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel — Aims TCF Canada</title>
+    <meta name="description" content="Admin panel for managing TCF Canada Speaking tutor users.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+    <!-- ─── Background Effects ─── -->
+    <div class="bg-effects">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="grid-overlay"></div>
+    </div>
+
+    <div id="app">
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- ADMIN LOGIN SCREEN -->
+        <!-- ═══════════════════════════════════════ -->
+        <section id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="login-card">
+                    <div class="login-header">
+                        <div class="admin-icon">
+                            <i data-lucide="shield-check" style="width: 36px; height: 36px;"></i>
+                        </div>
+                        <h1>Admin Panel</h1>
+                        <p class="login-subtitle">TCF Canada Speaking — by Aims</p>
+                    </div>
+
+                    <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+                        <div class="form-group">
+                            <label for="admin-email">
+                                <i data-lucide="mail"
+                                    style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
+                                Email Address
+                            </label>
+                            <input type="email" id="admin-email" placeholder="admin@mail.org" required
+                                autocomplete="email">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="admin-password">
+                                <i data-lucide="lock"
+                                    style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
+                                Password
+                            </label>
+                            <div class="password-wrapper">
+                                <input type="password" id="admin-password" placeholder="••••••••" required
+                                    autocomplete="current-password">
+                                <button type="button" class="btn-toggle-pw"
+                                    onclick="togglePasswordVisibility('admin-password', this)">
+                                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="login-error" class="error-message" style="display: none;"></div>
+
+                        <button type="submit" class="btn-primary" id="btn-admin-login">
+                            <i data-lucide="log-in" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                            Sign In
+                        </button>
+                    </form>
+
+                    <div class="login-footer">
+                        <a href="/" class="back-link">
+                            <i data-lucide="arrow-left" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                            Back to App
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- ADMIN DASHBOARD -->
+        <!-- ═══════════════════════════════════════ -->
+        <section id="dashboard-screen" class="screen">
+            <div class="dashboard-container">
+                <!-- Top Bar -->
+                <div class="dashboard-topbar">
+                    <div class="topbar-left">
+                        <div class="admin-badge">
+                            <i data-lucide="shield-check" style="width: 20px; height: 20px;"></i>
+                            <span>Admin Panel</span>
+                        </div>
+                        <span class="admin-name" id="admin-name"></span>
+                    </div>
+                    <div class="topbar-right">
+                        <button class="btn-outline" onclick="window.location.href='/'">
+                            <i data-lucide="external-link" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                            Go to App
+                        </button>
+                        <button class="btn-danger-outline" onclick="adminLogout()">
+                            <i data-lucide="log-out" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-total"><i data-lucide="users" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total">0</span>
+                            <span class="stat-label">Total Users</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-active"><i data-lucide="user-check"
+                                style="width: 24px; height: 24px;"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-active">0</span>
+                            <span class="stat-label">Active Users</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-inactive"><i data-lucide="user-x"
+                                style="width: 24px; height: 24px;"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-inactive">0</span>
+                            <span class="stat-label">Inactive Users</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="action-bar">
+                    <h2><i data-lucide="list"
+                            style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px;"></i>User
+                        Management</h2>
+                    <button class="btn-primary" onclick="openCreateUserModal()">
+                        <i data-lucide="user-plus" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                        Add New User
+                    </button>
+                </div>
+
+                <!-- Users Table -->
+                <div class="table-container">
+                    <div id="users-loading" class="table-loading">
+                        <div class="spinner"></div>
+                        <p>Loading users...</p>
+                    </div>
+                    <div id="users-empty" class="table-empty" style="display: none;">
+                        <i data-lucide="user-plus" style="width: 48px; height: 48px; color: #94a3b8;"></i>
+                        <p>No users yet. Click "Add New User" to create one.</p>
+                    </div>
+                    <table id="users-table" class="users-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email / Mobile</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Last Login</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- CREATE/EDIT USER MODAL -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="user-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-title">
+                    <i data-lucide="user-plus"
+                        style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px;"></i>
+                    Add New User
+                </h3>
+                <button class="btn-close" onclick="closeModal()">
+                    <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+                </button>
+            </div>
+
+            <form id="user-form" onsubmit="handleUserSubmit(event)">
+                <input type="hidden" id="user-id" value="">
+
+                <div class="form-group">
+                    <label for="user-name">
+                        <i data-lucide="user"
+                            style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
+                        Full Name
+                    </label>
+                    <input type="text" id="user-name" placeholder="John Doe">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="user-email">
+                            <i data-lucide="mail"
+                                style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
+                            Email Address
+                        </label>
+                        <input type="email" id="user-email" placeholder="user@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-mobile">
+                            <i data-lucide="phone"
+                                style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
+                            Mobile Number
+                        </label>
+                        <input type="text" id="user-mobile" placeholder="+91 98765 43210">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-password">
+                        <i data-lucide="lock"
+                            style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
+                        Password <span id="password-hint" class="hint">(required for new users)</span>
+                    </label>
+                    <div class="password-wrapper">
+                        <input type="password" id="user-password" placeholder="Minimum 6 characters">
+                        <button type="button" class="btn-toggle-pw"
+                            onclick="togglePasswordVisibility('user-password', this)">
+                            <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group" id="active-toggle-group" style="display: none;">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="user-active" checked>
+                        <span class="toggle-switch"></span>
+                        <span>Account Active</span>
+                    </label>
+                </div>
+
+                <div id="modal-error" class="error-message" style="display: none;"></div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="btn-submit-user">
+                        <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                        Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- DELETE CONFIRMATION MODAL -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="delete-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card modal-card-sm">
+            <div class="modal-header">
+                <h3>
+                    <i data-lucide="alert-triangle"
+                        style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px; color: #ef4444;"></i>
+                    Confirm Deletion
+                </h3>
+                <button class="btn-close" onclick="closeDeleteModal()">
+                    <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+                </button>
+            </div>
+            <p class="delete-message">Are you sure you want to delete user <strong id="delete-user-name"></strong>? This
+                action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-danger" id="btn-confirm-delete" onclick="confirmDeleteUser()">
+                    <i data-lucide="trash-2" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                    Delete User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- TOAST NOTIFICATIONS -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="admin.js"></script>
+    <script>lucide.createIcons();</script>
+</body>
+
+</html>

@@ -2,24 +2,82 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const rateLimit = require('express-rate-limit');
+
+
+// ─── Auth Routes ──────────────────────────────────────────────────────────────
+const { router: authRouter, requireUser } = require('./routes/auth');
 
 // ─── Groq Configuration ───────────────────────────────────────────────────────
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = 'llama-3.3-70b-versatile';         // Better instruction-following for strict examiner behavior
-const GROQ_EVAL_MODEL = 'openai/gpt-oss-120b';        // Most powerful model on Groq — for accurate evaluations
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = process.env.GROQ_MODEL;
+const GROQ_EVAL_MODEL = process.env.GROQ_EVAL_MODEL;
+const GROQ_API_URL = process.env.GROQ_API_URL;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!GROQ_API_KEY) {
-  console.error('\n❌ GROQ_API_KEY is not set! Create a .env file with:\n   GROQ_API_KEY=your_key_here\n');
+  console.error('\n GROQ_API_KEY is not set! Create a .env file with:\n   GROQ_API_KEY=your_key_here\n');
   process.exit(1);
 }
 
 const app = express();
-const PORT = 3000;
+app.set('trust proxy', 1);
+const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+if (process.env.FRONTEND_URL) {
+  app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+  }));
+} else {
+  app.use(cors());
+}
 app.use(express.json({ limit: '10mb' }));
+
+// ─── Rate Limiting (NEW) ──────────────────────────────────────────────────────
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 200, // limit each IP to 200 requests per windowMs
+  message: { error: 'Too many requests, please try again later' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 login attempts per windowMs
+  message: { error: 'Too many login attempts, please try again later' }
+});
+
+// Apply to all API routes
+app.use('/api/', apiLimiter);
+app.use('/api/auth/user/login', authLimiter);
+app.use('/api/auth/admin/login', authLimiter);
+
+// ─── Auth API Routes (before static middleware) ───────────────────────────────
+app.use('/api/auth', authRouter);
+
+// ─── Serve Login Page (public) ────────────────────────────────────────────────
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// ─── Serve Admin Page (public — auth is handled client-side) ──────────────────
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// ─── Serve Main App (protected) ───────────────────────────────────────────────
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ─── Root redirects to login ──────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.redirect('/login');
+});
+
+// ─── Static files (CSS, JS, etc.) ─────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Extract Questions from Documents ──────────────────────────────────────────
@@ -625,7 +683,7 @@ app.get('/api/tasks', (req, res) => {
 });
 
 // Start a session
-app.post('/api/session/start', async (req, res) => {
+app.post('/api/session/start', requireUser, async (req, res) => {
   const { taskType } = req.body;
 
   if (!TASK_DEFINITIONS[taskType]) {
@@ -657,7 +715,7 @@ app.post('/api/session/start', async (req, res) => {
 });
 
 // Send a message in a session
-app.post('/api/session/message', async (req, res) => {
+app.post('/api/session/message', requireUser, async (req, res) => {
   const { sessionId, message } = req.body;
   const session = sessions.get(sessionId);
 
@@ -681,7 +739,7 @@ app.post('/api/session/message', async (req, res) => {
 });
 
 // Get quick feedback on text
-app.post('/api/feedback', async (req, res) => {
+app.post('/api/feedback', requireUser, async (req, res) => {
   const { text } = req.body;
 
   if (!text || text.trim().length < 3) {
@@ -693,7 +751,7 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 // End session and get evaluation
-app.post('/api/session/end', async (req, res) => {
+app.post('/api/session/end', requireUser, async (req, res) => {
   const { sessionId } = req.body;
   const session = sessions.get(sessionId);
 
