@@ -143,6 +143,11 @@
                             style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px;"></i>User
                         Management</h2>
                     <div class="action-bar-right">
+                        <select id="user-course-filter" onchange="handleUserSearch()" class="course-filter-select">
+                            <option value="all">All Students</option>
+                            <option value="french">French</option>
+                            <option value="ielts">IELTS</option>
+                        </select>
                         <div class="search-box" id="user-search-box">
                             <i data-lucide="search" class="search-icon" style="width: 16px; height: 16px;"></i>
                             <input type="text" id="user-search-input" placeholder="Search by name..."

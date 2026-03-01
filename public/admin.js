@@ -234,21 +234,28 @@ function renderUsersTable(filteredData) {
 // ─── User Search ───────────────────────────────────────
 function handleUserSearch() {
     const query = document.getElementById('user-search-input').value.trim().toLowerCase();
+    const courseFilter = document.getElementById('user-course-filter').value;
     const clearBtn = document.getElementById('search-clear-btn');
 
     // Show/hide clear button
     clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
 
-    if (!query) {
-        // No search query — show all users
-        renderUsersTable();
-        return;
+    let filtered = usersData;
+
+    // Filter by course
+    if (courseFilter === 'french') {
+        filtered = filtered.filter(u => u.has_french_access !== false);
+    } else if (courseFilter === 'ielts') {
+        filtered = filtered.filter(u => u.has_ielts_access === true);
     }
 
-    const filtered = usersData.filter(user => {
-        const name = (user.name || '').toLowerCase();
-        return name.includes(query);
-    });
+    // Filter by name
+    if (query) {
+        filtered = filtered.filter(user => {
+            const name = (user.name || '').toLowerCase();
+            return name.includes(query);
+        });
+    }
 
     renderUsersTable(filtered);
 }
@@ -257,7 +264,7 @@ function clearUserSearch() {
     const input = document.getElementById('user-search-input');
     input.value = '';
     document.getElementById('search-clear-btn').style.display = 'none';
-    renderUsersTable();
+    handleUserSearch();
     input.focus();
 }
 
