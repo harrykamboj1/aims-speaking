@@ -186,6 +186,11 @@ function renderUsersTable(filteredData) {
             deviceClass = 'devices-ok';
         }
 
+        let accessBadges = '';
+        if (user.has_french_access !== false) accessBadges += '<span style="background:#eef2ff; color:#4f46e5; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px; font-weight: 600;">French</span>';
+        if (user.has_ielts_access === true) accessBadges += '<span style="background:#fdf4ff; color:#c026d3; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">IELTS</span>';
+        if (!accessBadges) accessBadges = '<span style="color:#94a3b8; font-size: 0.75rem;">None</span>';
+
         tr.innerHTML = `
       <td class="user-name-cell">${escapeHtml(name)}</td>
       <td>
@@ -194,6 +199,7 @@ function renderUsersTable(filteredData) {
           ${mobile !== '—' ? `<span class="mobile">${escapeHtml(mobile)}</span>` : ''}
         </div>
       </td>
+      <td>${accessBadges}</td>
       <td>
         <span class="status-badge ${status ? 'active' : 'inactive'}">
           <span class="status-dot"></span>
@@ -268,6 +274,8 @@ function openCreateUserModal() {
     document.getElementById('password-hint').textContent = '(required)';
     document.getElementById('active-toggle-group').style.display = 'none';
     document.getElementById('user-max-devices').value = 1;
+    document.getElementById('user-french-access').checked = true;
+    document.getElementById('user-ielts-access').checked = false;
     document.getElementById('modal-error').style.display = 'none';
 
     document.getElementById('user-modal').style.display = 'flex';
@@ -291,6 +299,8 @@ function openEditUserModal(userId) {
     document.getElementById('active-toggle-group').style.display = 'block';
     document.getElementById('user-active').checked = user.is_active;
     document.getElementById('user-max-devices').value = user.max_devices || 3;
+    document.getElementById('user-french-access').checked = user.has_french_access !== false;
+    document.getElementById('user-ielts-access').checked = user.has_ielts_access === true;
     document.getElementById('modal-error').style.display = 'none';
 
     document.getElementById('user-modal').style.display = 'flex';
@@ -316,6 +326,8 @@ async function handleUserSubmit(event) {
     const mobile = document.getElementById('user-mobile').value.trim();
     const password = document.getElementById('user-password').value;
     const maxDevices = parseInt(document.getElementById('user-max-devices').value) || 1;
+    const hasFrenchAccess = document.getElementById('user-french-access').checked;
+    const hasIeltsAccess = document.getElementById('user-ielts-access').checked;
 
     if (!email && !mobile) {
         errorEl.textContent = 'Please provide an email address or mobile number.';
@@ -338,7 +350,7 @@ async function handleUserSubmit(event) {
     errorEl.style.display = 'none';
     btn.disabled = true;
 
-    const body = { name, max_devices: maxDevices };
+    const body = { name, max_devices: maxDevices, has_french_access: hasFrenchAccess, has_ielts_access: hasIeltsAccess };
     if (email) body.email = email;
     if (mobile) body.mobile = mobile;
     if (password) body.password = password;

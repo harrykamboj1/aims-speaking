@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   name TEXT,
   is_active BOOLEAN DEFAULT TRUE,
+  has_french_access BOOLEAN DEFAULT TRUE,
+  has_ielts_access BOOLEAN DEFAULT FALSE,
   last_login TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   

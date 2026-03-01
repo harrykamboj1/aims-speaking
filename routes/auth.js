@@ -48,15 +48,19 @@ async function requireUser(req, res, next) {
     }
 
     try {
-        // Query the database to ensure the user hasn't been deactivated
+        // Query the database to ensure the user hasn't been deactivated or lost access
         const { data: user } = await supabase
             .from('users')
-            .select('is_active')
+            .select('is_active, has_french_access')
             .eq('id', decoded.id)
             .single();
 
         if (!user || !user.is_active) {
             return res.status(403).json({ error: 'Your account has been deactivated. Please contact the administrator.' });
+        }
+
+        if (user.has_french_access === false) {
+            return res.status(403).json({ error: 'Your access to the French Tutor application has been revoked. Please contact the administrator.' });
         }
 
         // Verify the device is still registered (not removed by admin)
@@ -152,7 +156,7 @@ router.get('/admin/users', requireAdmin, async (req, res) => {
     try {
         const { data: users, error } = await supabase
             .from('users')
-            .select('id, email, mobile, name, is_active, created_at, last_login, max_devices')
+            .select('id, email, mobile, name, is_active, created_at, last_login, max_devices, has_french_access, has_ielts_access')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -188,7 +192,7 @@ router.get('/admin/users', requireAdmin, async (req, res) => {
 
 // ─── Create User (Admin) ──────────────────────────────────────────────
 router.post('/admin/users', requireAdmin, async (req, res) => {
-    const { email, mobile, password, name, max_devices } = req.body;
+    const { email, mobile, password, name, max_devices, has_french_access, has_ielts_access } = req.body;
 
     if (!password) {
         return res.status(400).json({ error: 'Password is required' });
@@ -231,6 +235,8 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
             name: name || null,
             is_active: true,
             max_devices: max_devices || 3,
+            has_french_access: has_french_access !== undefined ? has_french_access : true,
+            has_ielts_access: has_ielts_access !== undefined ? has_ielts_access : false,
             created_at: new Date().toISOString()
         };
 
@@ -240,7 +246,7 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
         const { data: newUser, error } = await supabase
             .from('users')
             .insert(userData)
-            .select('id, email, mobile, name, is_active, created_at, max_devices')
+            .select('id, email, mobile, name, is_active, created_at, max_devices, has_french_access, has_ielts_access')
             .single();
 
         if (error) throw error;
@@ -255,7 +261,7 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
 // ─── Update User (Admin) ──────────────────────────────────────────────
 router.put('/admin/users/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const { email, mobile, password, name, is_active, max_devices } = req.body;
+    const { email, mobile, password, name, is_active, max_devices, has_french_access, has_ielts_access } = req.body;
 
     try {
         const updateData = {};
@@ -265,6 +271,8 @@ router.put('/admin/users/:id', requireAdmin, async (req, res) => {
         if (name !== undefined) updateData.name = name;
         if (is_active !== undefined) updateData.is_active = is_active;
         if (max_devices !== undefined) updateData.max_devices = parseInt(max_devices) || 3;
+        if (has_french_access !== undefined) updateData.has_french_access = has_french_access;
+        if (has_ielts_access !== undefined) updateData.has_ielts_access = has_ielts_access;
 
         if (password) {
             updateData.password_hash = await bcrypt.hash(password, 12);
@@ -274,7 +282,7 @@ router.put('/admin/users/:id', requireAdmin, async (req, res) => {
             .from('users')
             .update(updateData)
             .eq('id', id)
-            .select('id, email, mobile, name, is_active, created_at, last_login, max_devices')
+            .select('id, email, mobile, name, is_active, created_at, last_login, max_devices, has_french_access, has_ielts_access')
             .single();
 
         if (error) throw error;
@@ -410,6 +418,10 @@ router.post('/user/login', async (req, res) => {
             return res.status(403).json({ error: 'Your account has been deactivated. Please contact the administrator.' });
         }
 
+        if (user.has_french_access === false) {
+            return res.status(403).json({ error: 'You do not have access to the French Tutor application. Please contact the administrator.' });
+        }
+
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid credentials. Please check your email/mobile and password.' });
@@ -541,10 +553,10 @@ router.get('/verify', async (req, res) => {
         try {
             const { data: user } = await supabase
                 .from('users')
-                .select('is_active')
+                .select('is_active, has_french_access')
                 .eq('id', decoded.id)
                 .single();
-            if (!user || !user.is_active) {
+            if (!user || !user.is_active || user.has_french_access === false) {
                 return res.status(401).json({ valid: false, reason: 'account_inactive' });
             }
 
