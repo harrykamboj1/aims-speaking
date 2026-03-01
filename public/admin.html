@@ -142,10 +142,21 @@
                     <h2><i data-lucide="list"
                             style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px;"></i>User
                         Management</h2>
-                    <button class="btn-primary" onclick="openCreateUserModal()">
-                        <i data-lucide="user-plus" style="width: 16px; height: 16px; margin-right: 6px;"></i>
-                        Add New User
-                    </button>
+                    <div class="action-bar-right">
+                        <div class="search-box" id="user-search-box">
+                            <i data-lucide="search" class="search-icon" style="width: 16px; height: 16px;"></i>
+                            <input type="text" id="user-search-input" placeholder="Search by name..."
+                                oninput="handleUserSearch()" autocomplete="off">
+                            <button type="button" class="search-clear-btn" id="search-clear-btn"
+                                onclick="clearUserSearch()" style="display: none;">
+                                <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                            </button>
+                        </div>
+                        <button class="btn-primary" onclick="openCreateUserModal()">
+                            <i data-lucide="user-plus" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                            Add New User
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Users Table -->
@@ -158,13 +169,19 @@
                         <i data-lucide="user-plus" style="width: 48px; height: 48px; color: #94a3b8;"></i>
                         <p>No users yet. Click "Add New User" to create one.</p>
                     </div>
+                    <div id="users-no-results" class="table-no-results" style="display: none;">
+                        <div class="no-results-icon">
+                            <i data-lucide="search-x" style="width: 24px; height: 24px;"></i>
+                        </div>
+                        <p>No users found matching "<span id="no-results-query" class="no-results-query"></span>"</p>
+                    </div>
                     <table id="users-table" class="users-table" style="display: none;">
                         <thead>
                             <tr>
                                 <th>Name</th>
                                 <th>Email / Mobile</th>
                                 <th>Status</th>
-                                <th>Created</th>
+                                <th>Devices</th>
                                 <th>Last Login</th>
                                 <th>Actions</th>
                             </tr>
@@ -239,12 +256,23 @@
                     </div>
                 </div>
 
-                <div class="form-group" id="active-toggle-group" style="display: none;">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="user-active" checked>
-                        <span class="toggle-switch"></span>
-                        <span>Account Active</span>
-                    </label>
+                <div class="form-row">
+                    <div class="form-group" id="active-toggle-group" style="display: none;">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="user-active" checked>
+                            <span class="toggle-switch"></span>
+                            <span>Account Active</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group" id="device-limit-group">
+                        <label for="user-max-devices">
+                            <i data-lucide="smartphone"
+                                style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>
+                            Max Devices
+                        </label>
+                        <input type="number" id="user-max-devices" min="1" max="10" value="1" style="width: 100%;">
+                    </div>
                 </div>
 
                 <div id="modal-error" class="error-message" style="display: none;"></div>
@@ -283,6 +311,50 @@
                     <i data-lucide="trash-2" style="width: 16px; height: 16px; margin-right: 6px;"></i>
                     Delete User
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- DEVICES MODAL -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="devices-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card modal-card-lg">
+            <div class="modal-header">
+                <h3 id="devices-modal-title">
+                    <i data-lucide="smartphone"
+                        style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px;"></i>
+                    User Devices
+                </h3>
+                <button class="btn-close" onclick="closeDevicesModal()">
+                    <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+                </button>
+            </div>
+
+            <div class="devices-info-bar">
+                <span id="devices-count-label" class="devices-count-label">0 devices</span>
+                <span class="devices-limit-label">Limit: <strong id="devices-limit-value">1</strong></span>
+            </div>
+
+            <div id="devices-loading" class="devices-loading">
+                <div class="spinner"></div>
+                <p>Loading devices...</p>
+            </div>
+
+            <div id="devices-empty" class="devices-empty" style="display: none;">
+                <i data-lucide="smartphone-off" style="width: 40px; height: 40px; color: #64748b;"></i>
+                <p>No devices registered for this user.</p>
+            </div>
+
+            <div id="devices-list" class="devices-list" style="display: none;"></div>
+
+            <div class="modal-actions">
+                <button class="btn-danger-outline" id="btn-remove-all-devices" onclick="removeAllDevices()"
+                    style="margin-right: auto;">
+                    <i data-lucide="trash-2" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                    Remove All Devices
+                </button>
+                <button class="btn-secondary" onclick="closeDevicesModal()">Close</button>
             </div>
         </div>
     </div>

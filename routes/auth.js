@@ -51,7 +51,7 @@ async function requireUser(req, res, next) {
         // Query the database to ensure the user hasn't been deactivated
         const { data: user } = await supabase
             .from('users')
-            .select('is_active, last_login')
+            .select('is_active')
             .eq('id', decoded.id)
             .single();
 
@@ -59,11 +59,25 @@ async function requireUser(req, res, next) {
             return res.status(403).json({ error: 'Your account has been deactivated. Please contact the administrator.' });
         }
 
-        const tokenTime = new Date(decoded.session_id).getTime();
-        const dbTime = new Date(user.last_login).getTime();
+        // Verify the device is still registered (not removed by admin)
+        if (decoded.device_id) {
+            const { data: device } = await supabase
+                .from('user_devices')
+                .select('id')
+                .eq('id', decoded.device_id)
+                .eq('user_id', decoded.id)
+                .single();
 
-        if (!decoded.session_id || isNaN(tokenTime) || isNaN(dbTime) || tokenTime !== dbTime) {
-            return res.status(401).json({ error: 'Session expired. You logged in from another device.' });
+            if (!device) {
+                return res.status(401).json({ error: 'This device has been removed. Please log in again.' });
+            }
+
+            // Update last_active timestamp (fire and forget)
+            supabase
+                .from('user_devices')
+                .update({ last_active: new Date().toISOString() })
+                .eq('id', decoded.device_id)
+                .then(() => { });
         }
     } catch (err) {
         return res.status(500).json({ error: 'Server error verifying user status' });
@@ -138,12 +152,34 @@ router.get('/admin/users', requireAdmin, async (req, res) => {
     try {
         const { data: users, error } = await supabase
             .from('users')
-            .select('id, email, mobile, name, is_active, created_at, last_login')
+            .select('id, email, mobile, name, is_active, created_at, last_login, max_devices')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        res.json({ users: users || [] });
+        // Fetch device counts for all users
+        const userIds = (users || []).map(u => u.id);
+        let deviceCounts = {};
+
+        if (userIds.length > 0) {
+            const { data: devices } = await supabase
+                .from('user_devices')
+                .select('user_id');
+
+            if (devices) {
+                devices.forEach(d => {
+                    deviceCounts[d.user_id] = (deviceCounts[d.user_id] || 0) + 1;
+                });
+            }
+        }
+
+        const usersWithDevices = (users || []).map(u => ({
+            ...u,
+            device_count: deviceCounts[u.id] || 0,
+            max_devices: u.max_devices || 3
+        }));
+
+        res.json({ users: usersWithDevices });
     } catch (err) {
         console.error('Get users error:', err);
         res.status(500).json({ error: 'Failed to fetch users' });
@@ -152,7 +188,7 @@ router.get('/admin/users', requireAdmin, async (req, res) => {
 
 // ─── Create User (Admin) ──────────────────────────────────────────────
 router.post('/admin/users', requireAdmin, async (req, res) => {
-    const { email, mobile, password, name } = req.body;
+    const { email, mobile, password, name, max_devices } = req.body;
 
     if (!password) {
         return res.status(400).json({ error: 'Password is required' });
@@ -164,8 +200,6 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
 
     try {
         // Check for existing user
-        let query = supabase.from('users').select('id');
-
         if (email) {
             const { data: existingEmail } = await supabase
                 .from('users')
@@ -196,6 +230,7 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
             password_hash: passwordHash,
             name: name || null,
             is_active: true,
+            max_devices: max_devices || 3,
             created_at: new Date().toISOString()
         };
 
@@ -205,7 +240,7 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
         const { data: newUser, error } = await supabase
             .from('users')
             .insert(userData)
-            .select('id, email, mobile, name, is_active, created_at')
+            .select('id, email, mobile, name, is_active, created_at, max_devices')
             .single();
 
         if (error) throw error;
@@ -220,7 +255,7 @@ router.post('/admin/users', requireAdmin, async (req, res) => {
 // ─── Update User (Admin) ──────────────────────────────────────────────
 router.put('/admin/users/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const { email, mobile, password, name, is_active } = req.body;
+    const { email, mobile, password, name, is_active, max_devices } = req.body;
 
     try {
         const updateData = {};
@@ -229,6 +264,7 @@ router.put('/admin/users/:id', requireAdmin, async (req, res) => {
         if (mobile !== undefined) updateData.mobile = mobile.trim();
         if (name !== undefined) updateData.name = name;
         if (is_active !== undefined) updateData.is_active = is_active;
+        if (max_devices !== undefined) updateData.max_devices = parseInt(max_devices) || 3;
 
         if (password) {
             updateData.password_hash = await bcrypt.hash(password, 12);
@@ -238,7 +274,7 @@ router.put('/admin/users/:id', requireAdmin, async (req, res) => {
             .from('users')
             .update(updateData)
             .eq('id', id)
-            .select('id, email, mobile, name, is_active, created_at, last_login')
+            .select('id, email, mobile, name, is_active, created_at, last_login, max_devices')
             .single();
 
         if (error) throw error;
@@ -269,13 +305,72 @@ router.delete('/admin/users/:id', requireAdmin, async (req, res) => {
     }
 });
 
+// ─── Get User Devices (Admin) ─────────────────────────────────────────
+router.get('/admin/users/:id/devices', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const { data: devices, error } = await supabase
+            .from('user_devices')
+            .select('*')
+            .eq('user_id', id)
+            .order('last_active', { ascending: false });
+
+        if (error) throw error;
+
+        res.json({ devices: devices || [] });
+    } catch (err) {
+        console.error('Get devices error:', err);
+        res.status(500).json({ error: 'Failed to fetch devices' });
+    }
+});
+
+// ─── Remove User Device (Admin) ───────────────────────────────────────
+router.delete('/admin/users/:userId/devices/:deviceId', requireAdmin, async (req, res) => {
+    const { userId, deviceId } = req.params;
+
+    try {
+        const { error } = await supabase
+            .from('user_devices')
+            .delete()
+            .eq('id', deviceId)
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        res.json({ message: 'Device removed successfully' });
+    } catch (err) {
+        console.error('Remove device error:', err);
+        res.status(500).json({ error: 'Failed to remove device' });
+    }
+});
+
+// ─── Remove All User Devices (Admin) ──────────────────────────────────
+router.delete('/admin/users/:id/devices', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const { error } = await supabase
+            .from('user_devices')
+            .delete()
+            .eq('user_id', id);
+
+        if (error) throw error;
+
+        res.json({ message: 'All devices removed successfully' });
+    } catch (err) {
+        console.error('Remove all devices error:', err);
+        res.status(500).json({ error: 'Failed to remove devices' });
+    }
+});
+
 // ═══════════════════════════════════════════════════════════════════════
 // USER ROUTES
 // ═══════════════════════════════════════════════════════════════════════
 
 // ─── User Login ────────────────────────────────────────────────────────
 router.post('/user/login', async (req, res) => {
-    const { identifier, password } = req.body;
+    const { identifier, password, device_fingerprint, device_info } = req.body;
 
     if (!identifier || !password) {
         return res.status(400).json({ error: 'Email/mobile and password are required' });
@@ -320,6 +415,87 @@ router.post('/user/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials. Please check your email/mobile and password.' });
         }
 
+        const maxDevices = user.max_devices || 3;
+        const fingerprint = device_fingerprint || 'unknown';
+        const info = device_info || {};
+
+        // Check if this device is already registered
+        const { data: existingDevice } = await supabase
+            .from('user_devices')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('fingerprint', fingerprint)
+            .single();
+
+        let deviceId;
+
+        if (existingDevice) {
+            // Device already registered — update last_active
+            deviceId = existingDevice.id;
+            await supabase
+                .from('user_devices')
+                .update({
+                    last_active: new Date().toISOString(),
+                    device_name: info.device_name || null,
+                    browser: info.browser || null,
+                    os: info.os || null,
+                    ip_address: req.ip || req.headers['x-forwarded-for'] || null
+                })
+                .eq('id', deviceId);
+        } else {
+            // New device — check device limit
+            const { data: currentDevices } = await supabase
+                .from('user_devices')
+                .select('id, last_active')
+                .eq('user_id', user.id)
+                .order('last_active', { ascending: true });
+
+            const deviceCount = currentDevices ? currentDevices.length : 0;
+
+            if (deviceCount >= maxDevices) {
+                // Build a user-friendly message
+                return res.status(403).json({
+                    error: `Device limit reached. You can only use ${maxDevices} device${maxDevices > 1 ? 's' : ''}. Please contact the administrator to remove an old device or increase your limit.`,
+                    code: 'DEVICE_LIMIT_REACHED',
+                    device_count: deviceCount,
+                    max_devices: maxDevices
+                });
+            }
+
+            // Register the new device
+            const { data: newDevice, error: deviceError } = await supabase
+                .from('user_devices')
+                .insert({
+                    user_id: user.id,
+                    fingerprint: fingerprint,
+                    device_name: info.device_name || null,
+                    browser: info.browser || null,
+                    os: info.os || null,
+                    ip_address: req.ip || req.headers['x-forwarded-for'] || null,
+                    last_active: new Date().toISOString()
+                })
+                .select('id')
+                .single();
+
+            if (deviceError) {
+                console.error('Device registration error:', deviceError);
+                // If it's a unique constraint violation, the device was registered in a race condition
+                if (deviceError.code === '23505') {
+                    const { data: raceDevice } = await supabase
+                        .from('user_devices')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .eq('fingerprint', fingerprint)
+                        .single();
+                    deviceId = raceDevice?.id;
+                } else {
+                    throw deviceError;
+                }
+            } else {
+                deviceId = newDevice.id;
+            }
+        }
+
         const loginTime = new Date().toISOString();
 
         const token = generateToken({
@@ -327,6 +503,7 @@ router.post('/user/login', async (req, res) => {
             email: user.email,
             mobile: user.mobile,
             role: 'user',
+            device_id: deviceId,
             session_id: loginTime
         });
 
@@ -359,23 +536,30 @@ router.get('/verify', async (req, res) => {
     const decoded = verifyToken(token);
     if (!decoded) return res.status(401).json({ valid: false });
 
-    // If it's a user, verify they are still active in the database
+    // If it's a user, verify they are still active and device is valid
     if (decoded.role === 'user') {
         try {
             const { data: user } = await supabase
                 .from('users')
-                .select('is_active, last_login')
+                .select('is_active')
                 .eq('id', decoded.id)
                 .single();
             if (!user || !user.is_active) {
                 return res.status(401).json({ valid: false, reason: 'account_inactive' });
             }
 
-            const tokenTime = new Date(decoded.session_id).getTime();
-            const dbTime = new Date(user.last_login).getTime();
+            // Verify device is still registered
+            if (decoded.device_id) {
+                const { data: device } = await supabase
+                    .from('user_devices')
+                    .select('id')
+                    .eq('id', decoded.device_id)
+                    .eq('user_id', decoded.id)
+                    .single();
 
-            if (!decoded.session_id || isNaN(tokenTime) || isNaN(dbTime) || tokenTime !== dbTime) {
-                return res.status(401).json({ valid: false, reason: 'session_expired' });
+                if (!device) {
+                    return res.status(401).json({ valid: false, reason: 'device_removed' });
+                }
             }
         } catch (err) {
             return res.status(500).json({ valid: false });

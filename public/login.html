@@ -411,7 +411,108 @@
     <script>
         lucide.createIcons();
 
-        // Check if already logged in
+        // ─── Device Fingerprinting ─────────────────────────────
+        async function generateFingerprint() {
+            const components = [];
+
+            // Screen properties
+            components.push(`${screen.width}x${screen.height}`);
+            components.push(`${screen.colorDepth}`);
+            components.push(`${window.devicePixelRatio || 1}`);
+
+            // Timezone
+            components.push(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+
+            // Language
+            components.push(navigator.language || '');
+
+            // Platform
+            components.push(navigator.platform || '');
+
+            // User agent
+            components.push(navigator.userAgent || '');
+
+            // Canvas fingerprint
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 50;
+                const ctx = canvas.getContext('2d');
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillStyle = '#f60';
+                ctx.fillRect(80, 1, 62, 20);
+                ctx.fillStyle = '#069';
+                ctx.font = '14px Arial';
+                ctx.fillText('TCF-FP-2026', 2, 15);
+                ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+                ctx.font = '16px Georgia';
+                ctx.fillText('TCF-FP-2026', 4, 40);
+                components.push(canvas.toDataURL());
+            } catch (e) {
+                components.push('canvas-unavailable');
+            }
+
+            // WebGL renderer
+            try {
+                const glCanvas = document.createElement('canvas');
+                const gl = glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '');
+                    }
+                }
+            } catch (e) {
+                components.push('webgl-unavailable');
+            }
+
+            // Hash the components
+            const raw = components.join('|||');
+            const encoder = new TextEncoder();
+            const data = encoder.encode(raw);
+
+            if (crypto.subtle) {
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
+            // Fallback simple hash
+            let hash = 0;
+            for (let i = 0; i < raw.length; i++) {
+                const chr = raw.charCodeAt(i);
+                hash = ((hash << 5) - hash) + chr;
+                hash |= 0;
+            }
+            return 'fb-' + Math.abs(hash).toString(16);
+        }
+
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let browser = 'Unknown Browser';
+            let os = 'Unknown OS';
+
+            // Detect browser
+            if (ua.includes('Firefox/')) browser = 'Firefox';
+            else if (ua.includes('Edg/')) browser = 'Edge';
+            else if (ua.includes('OPR/') || ua.includes('Opera/')) browser = 'Opera';
+            else if (ua.includes('Chrome/')) browser = 'Chrome';
+            else if (ua.includes('Safari/')) browser = 'Safari';
+
+            // Detect OS
+            if (ua.includes('Windows')) os = 'Windows';
+            else if (ua.includes('Mac OS')) os = 'macOS';
+            else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+            else if (ua.includes('Android')) os = 'Android';
+            else if (ua.includes('Linux')) os = 'Linux';
+            else if (ua.includes('CrOS')) os = 'ChromeOS';
+
+            const deviceName = `${browser} on ${os}`;
+
+            return { browser, os, device_name: deviceName };
+        }
+
+        // ─── Session Check ─────────────────────────────────────
         const token = localStorage.getItem('user_token');
         if (token) {
             verifySession();
@@ -425,10 +526,13 @@
                 const data = await res.json();
                 if (data.valid && data.role === 'user') {
                     window.location.href = '/app';
+                } else {
+                    localStorage.removeItem('user_token');
                 }
             } catch { }
         }
 
+        // ─── Login Handler ─────────────────────────────────────
         async function handleLogin(event) {
             event.preventDefault();
 
@@ -442,10 +546,14 @@
             btn.innerHTML = '<div class="spinner"></div> Signing in...';
 
             try {
+                // Generate device fingerprint
+                const device_fingerprint = await generateFingerprint();
+                const device_info = getDeviceInfo();
+
                 const res = await fetch('/api/auth/user/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier, password })
+                    body: JSON.stringify({ identifier, password, device_fingerprint, device_info })
                 });
 
                 const data = await res.json();

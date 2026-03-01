@@ -42,6 +42,8 @@
   --danger-bg: rgba(239, 68, 68, 0.1);
   --warning: #f59e0b;
   --warning-bg: rgba(245, 158, 11, 0.1);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.1);
 
   /* Transition */
   --transition-fast: 0.15s ease;
@@ -219,7 +221,8 @@ body {
 
 .form-group input[type="text"],
 .form-group input[type="email"],
-.form-group input[type="password"] {
+.form-group input[type="password"],
+.form-group input[type="number"] {
   width: 100%;
   padding: 12px 16px;
   border-radius: var(--radius-md);
@@ -614,10 +617,115 @@ body {
   align-items: center;
 }
 
+.action-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .action-bar .btn-primary {
   width: auto;
   padding: 10px 20px;
   font-size: 0.9rem;
+}
+
+/* ─── Search Box ─── */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: var(--transition-fast);
+}
+
+.search-box input {
+  width: 220px;
+  padding: 9px 36px 9px 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.search-box input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  width: 280px;
+}
+
+.search-box input:focus~.search-icon,
+.search-box input:focus+.search-icon {
+  color: var(--brand-primary-light);
+}
+
+.search-box:focus-within .search-icon {
+  color: var(--brand-primary-light);
+}
+
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: var(--transition-fast);
+}
+
+.search-clear-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+}
+
+/* ─── No Search Results ─── */
+.table-no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+  gap: 8px;
+}
+
+.table-no-results .no-results-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+}
+
+.table-no-results p {
+  font-size: 0.9rem;
+}
+
+.table-no-results .no-results-query {
+  color: var(--brand-primary-light);
+  font-weight: 600;
 }
 
 /* ─── Table ─── */
@@ -750,6 +858,53 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
+   DEVICE BADGE (in users table)
+   ═══════════════════════════════════════════════════════ */
+
+.device-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: inherit;
+}
+
+.device-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.device-badge.devices-ok {
+  background: var(--info-bg);
+  color: var(--info);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.device-badge.devices-ok:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.device-badge.devices-full {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.device-badge.devices-full:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════
    MODALS
    ═══════════════════════════════════════════════════════ */
 
@@ -789,6 +944,12 @@ body {
 
 .modal-card-sm {
   max-width: 440px;
+}
+
+.modal-card-lg {
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -884,6 +1045,146 @@ body {
 .form-group .toggle-label input:checked+.toggle-switch::before {
   transform: translateX(20px);
   background: white;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DEVICES MODAL
+   ═══════════════════════════════════════════════════════ */
+
+.devices-info-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+
+.devices-count-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.devices-limit-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.devices-limit-label strong {
+  color: var(--brand-primary-light);
+  font-weight: 700;
+}
+
+.devices-loading,
+.devices-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.devices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Device Card ─── */
+.device-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: var(--transition-normal);
+}
+
+.device-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.device-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.device-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.device-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.device-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.device-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.device-card-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.device-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.device-info-label {
+  display: flex;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.device-info-value {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.device-fingerprint {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -985,11 +1286,19 @@ body {
   }
 
   .users-table {
-    min-width: 600px;
+    min-width: 700px;
   }
 
   .admin-name {
     display: none;
+  }
+
+  .device-card-body {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-card-lg {
+    max-height: 90vh;
   }
 }
 

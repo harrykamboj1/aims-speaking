@@ -916,21 +916,163 @@ function retryTask() {
 function renderMarkdown(text) {
     if (!text) return '';
 
-    return text
+    // Process line by line for block elements
+    const lines = text.split('\n');
+    let html = '';
+    let inTable = false;
+    let tableRows = [];
+    let inBlockquote = false;
+    let blockquoteLines = [];
+    let inList = false;
+    let listType = '';
+    let listItems = [];
+
+    function flushTable() {
+        if (tableRows.length < 2) {
+            html += tableRows.join('<br>');
+            tableRows = [];
+            inTable = false;
+            return;
+        }
+
+        html += '<div class="eval-table-wrap"><table class="eval-table">';
+        tableRows.forEach((row, idx) => {
+            // Skip separator row (|---|---|)
+            if (/^\|[\s\-:|]+\|$/.test(row.trim())) return;
+
+            const cells = row.split('|').slice(1, -1).map(c => c.trim());
+            if (idx === 0) {
+                html += '<thead><tr>' + cells.map(c => `<th>${inlineMarkdown(c)}</th>`).join('') + '</tr></thead><tbody>';
+            } else {
+                html += '<tr>' + cells.map(c => `<td>${inlineMarkdown(c)}</td>`).join('') + '</tr>';
+            }
+        });
+        html += '</tbody></table></div>';
+        tableRows = [];
+        inTable = false;
+    }
+
+    function flushBlockquote() {
+        const content = blockquoteLines.map(l => inlineMarkdown(l)).join('<br>');
+        html += `<blockquote class="eval-blockquote">${content}</blockquote>`;
+        blockquoteLines = [];
+        inBlockquote = false;
+    }
+
+    function flushList() {
+        const tag = listType === 'ol' ? 'ol' : 'ul';
+        html += `<${tag} class="eval-list">` + listItems.map(item => `<li>${inlineMarkdown(item)}</li>`).join('') + `</${tag}>`;
+        listItems = [];
+        inList = false;
+        listType = '';
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Table row
+        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+            if (inBlockquote) flushBlockquote();
+            if (inList) flushList();
+            inTable = true;
+            tableRows.push(trimmed);
+            continue;
+        } else if (inTable) {
+            flushTable();
+        }
+
+        // Blockquote
+        if (trimmed.startsWith('> ')) {
+            if (inList) flushList();
+            inBlockquote = true;
+            blockquoteLines.push(trimmed.slice(2));
+            continue;
+        } else if (trimmed === '>') {
+            if (inBlockquote) blockquoteLines.push('');
+            continue;
+        } else if (inBlockquote) {
+            flushBlockquote();
+        }
+
+        // Horizontal rule
+        if (/^-{3,}$/.test(trimmed) || /^\*{3,}$/.test(trimmed)) {
+            if (inList) flushList();
+            html += '<hr class="eval-hr">';
+            continue;
+        }
+
+        // Unordered list
+        if (/^[-•] /.test(trimmed)) {
+            if (inList && listType !== 'ul') flushList();
+            inList = true;
+            listType = 'ul';
+            listItems.push(trimmed.replace(/^[-•] /, ''));
+            continue;
+        }
+
+        // Ordered list
+        if (/^\d+\. /.test(trimmed)) {
+            if (inList && listType !== 'ol') flushList();
+            inList = true;
+            listType = 'ol';
+            listItems.push(trimmed.replace(/^\d+\. /, ''));
+            continue;
+        }
+
+        // If we were in a list but this line isn't a list item, flush
+        if (inList) flushList();
+
         // Headers
-        .replace(/^### (.*$)/gm, '<h3 style="color: #2563eb; margin: 16px 0 8px; font-size: 1.05rem;">$1</h3>')
-        .replace(/^## (.*$)/gm, '<h2 style="color: #6d28d9; margin: 20px 0 10px; font-size: 1.2rem;">$1</h2>')
-        .replace(/^# (.*$)/gm, '<h1 style="color: #0f172a; margin: 24px 0 12px; font-size: 1.4rem;">$1</h1>')
-        // Bold
-        .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #3b82f6;">$1</strong>')
-        // Italic
+        if (trimmed.startsWith('#### ')) {
+            html += `<h4 class="eval-h4">${inlineMarkdown(trimmed.slice(5))}</h4>`;
+            continue;
+        }
+        if (trimmed.startsWith('### ')) {
+            html += `<h3 class="eval-h3">${inlineMarkdown(trimmed.slice(4))}</h3>`;
+            continue;
+        }
+        if (trimmed.startsWith('## ')) {
+            html += `<h2 class="eval-h2">${inlineMarkdown(trimmed.slice(3))}</h2>`;
+            continue;
+        }
+        if (trimmed.startsWith('# ')) {
+            html += `<h1 class="eval-h1">${inlineMarkdown(trimmed.slice(2))}</h1>`;
+            continue;
+        }
+
+        // Empty line = paragraph break
+        if (trimmed === '') {
+            html += '<div class="eval-spacer"></div>';
+            continue;
+        }
+
+        // Normal paragraph
+        html += `<p class="eval-p">${inlineMarkdown(trimmed)}</p>`;
+    }
+
+    // Flush remaining
+    if (inTable) flushTable();
+    if (inBlockquote) flushBlockquote();
+    if (inList) flushList();
+
+    return html;
+}
+
+function inlineMarkdown(text) {
+    return text
+        .replace(/`(.*?)`/g, '<code class="eval-code">$1</code>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        // Lists
-        .replace(/^- (.*$)/gm, '<li style="margin-left: 16px; margin-bottom: 4px;">$1</li>')
-        .replace(/^\d+\. (.*$)/gm, '<li style="margin-left: 16px; margin-bottom: 4px;">$1</li>')
-        // Line breaks
-        .replace(/\n\n/g, '<br><br>')
-        .replace(/\n/g, '<br>');
+        .replace(/~~(.*?)~~/g, '<del>$1</del>')
+        .replace(/❌/g, '<span class="eval-icon-err">❌</span>')
+        .replace(/✅/g, '<span class="eval-icon-ok">✅</span>')
+        .replace(/💡/g, '<span class="eval-icon-tip">💡</span>')
+        .replace(/📊/g, '<span class="eval-icon-chart">📊</span>')
+        .replace(/📋/g, '<span class="eval-icon-clip">📋</span>')
+        .replace(/✍️/g, '<span class="eval-icon-write">✍️</span>')
+        .replace(/🎯/g, '<span class="eval-icon-target">🎯</span>')
+        .replace(/📝/g, '<span class="eval-icon-note">📝</span>');
 }
 
 // ─── Utility ───────────────────────────────────────────────

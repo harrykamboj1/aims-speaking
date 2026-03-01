@@ -6,6 +6,8 @@ const API_BASE = '/api/auth';
 let adminToken = localStorage.getItem('admin_token');
 let usersData = [];
 let deleteTargetId = null;
+let devicesUserId = null;
+let devicesUserName = '';
 
 // ─── Initialize ────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -144,19 +146,45 @@ async function loadUsers() {
 }
 
 // ─── Render Users Table ────────────────────────────────
-function renderUsersTable() {
+function renderUsersTable(filteredData) {
     const tbody = document.getElementById('users-tbody');
+    const table = document.getElementById('users-table');
+    const noResults = document.getElementById('users-no-results');
+    const dataToRender = filteredData || usersData;
+
     tbody.innerHTML = '';
 
-    usersData.forEach(user => {
+    // Handle no search results
+    if (filteredData && filteredData.length === 0) {
+        table.style.display = 'none';
+        noResults.style.display = 'flex';
+        const queryEl = document.getElementById('no-results-query');
+        queryEl.textContent = document.getElementById('user-search-input').value.trim();
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    noResults.style.display = 'none';
+    table.style.display = 'table';
+
+    dataToRender.forEach(user => {
         const tr = document.createElement('tr');
 
         const name = user.name || '—';
         const email = user.email || '—';
         const mobile = user.mobile || '—';
         const status = user.is_active;
-        const created = user.created_at ? formatDate(user.created_at) : '—';
         const lastLogin = user.last_login ? formatDate(user.last_login) : 'Never';
+        const deviceCount = user.device_count || 0;
+        const maxDevices = user.max_devices || 3;
+
+        // Device status color
+        let deviceClass = 'devices-ok';
+        if (deviceCount >= maxDevices) {
+            deviceClass = 'devices-full';
+        } else if (deviceCount > 0) {
+            deviceClass = 'devices-ok';
+        }
 
         tr.innerHTML = `
       <td class="user-name-cell">${escapeHtml(name)}</td>
@@ -172,7 +200,12 @@ function renderUsersTable() {
           ${status ? 'Active' : 'Inactive'}
         </span>
       </td>
-      <td class="date-cell">${created}</td>
+      <td>
+        <button class="device-badge ${deviceClass}" onclick="openDevicesModal('${user.id}', '${escapeHtml(user.name || user.email || user.mobile || 'User')}', ${maxDevices})" title="View devices">
+          <i data-lucide="smartphone" style="width: 13px; height: 13px;"></i>
+          <span>${deviceCount} / ${maxDevices}</span>
+        </button>
+      </td>
       <td class="date-cell">${lastLogin}</td>
       <td>
         <div class="actions-cell">
@@ -192,6 +225,36 @@ function renderUsersTable() {
     if (window.lucide) lucide.createIcons();
 }
 
+// ─── User Search ───────────────────────────────────────
+function handleUserSearch() {
+    const query = document.getElementById('user-search-input').value.trim().toLowerCase();
+    const clearBtn = document.getElementById('search-clear-btn');
+
+    // Show/hide clear button
+    clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
+
+    if (!query) {
+        // No search query — show all users
+        renderUsersTable();
+        return;
+    }
+
+    const filtered = usersData.filter(user => {
+        const name = (user.name || '').toLowerCase();
+        return name.includes(query);
+    });
+
+    renderUsersTable(filtered);
+}
+
+function clearUserSearch() {
+    const input = document.getElementById('user-search-input');
+    input.value = '';
+    document.getElementById('search-clear-btn').style.display = 'none';
+    renderUsersTable();
+    input.focus();
+}
+
 // ─── Create User Modal ─────────────────────────────────
 function openCreateUserModal() {
     document.getElementById('modal-title').innerHTML = '<i data-lucide="user-plus" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px;"></i> Add New User';
@@ -204,6 +267,7 @@ function openCreateUserModal() {
     document.getElementById('user-password').required = true;
     document.getElementById('password-hint').textContent = '(required)';
     document.getElementById('active-toggle-group').style.display = 'none';
+    document.getElementById('user-max-devices').value = 1;
     document.getElementById('modal-error').style.display = 'none';
 
     document.getElementById('user-modal').style.display = 'flex';
@@ -226,6 +290,7 @@ function openEditUserModal(userId) {
     document.getElementById('password-hint').textContent = '(leave blank to keep current)';
     document.getElementById('active-toggle-group').style.display = 'block';
     document.getElementById('user-active').checked = user.is_active;
+    document.getElementById('user-max-devices').value = user.max_devices || 3;
     document.getElementById('modal-error').style.display = 'none';
 
     document.getElementById('user-modal').style.display = 'flex';
@@ -250,6 +315,7 @@ async function handleUserSubmit(event) {
     const email = document.getElementById('user-email').value.trim();
     const mobile = document.getElementById('user-mobile').value.trim();
     const password = document.getElementById('user-password').value;
+    const maxDevices = parseInt(document.getElementById('user-max-devices').value) || 1;
 
     if (!email && !mobile) {
         errorEl.textContent = 'Please provide an email address or mobile number.';
@@ -272,7 +338,7 @@ async function handleUserSubmit(event) {
     errorEl.style.display = 'none';
     btn.disabled = true;
 
-    const body = { name };
+    const body = { name, max_devices: maxDevices };
     if (email) body.email = email;
     if (mobile) body.mobile = mobile;
     if (password) body.password = password;
@@ -350,6 +416,195 @@ async function confirmDeleteUser() {
     }
 }
 
+// ═══════════════════════════════════════════════════════
+// DEVICE MANAGEMENT
+// ═══════════════════════════════════════════════════════
+
+// ─── Open Devices Modal ────────────────────────────────
+async function openDevicesModal(userId, userName, maxDevices) {
+    devicesUserId = userId;
+    devicesUserName = userName;
+
+    document.getElementById('devices-modal-title').innerHTML = `
+        <i data-lucide="smartphone" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: -3px;"></i>
+        Devices — ${escapeHtml(userName)}
+    `;
+    document.getElementById('devices-limit-value').textContent = maxDevices;
+    document.getElementById('devices-loading').style.display = 'flex';
+    document.getElementById('devices-empty').style.display = 'none';
+    document.getElementById('devices-list').style.display = 'none';
+    document.getElementById('devices-modal').style.display = 'flex';
+
+    if (window.lucide) lucide.createIcons();
+
+    await loadDevices(userId);
+}
+
+// ─── Close Devices Modal ───────────────────────────────
+function closeDevicesModal() {
+    devicesUserId = null;
+    devicesUserName = '';
+    document.getElementById('devices-modal').style.display = 'none';
+}
+
+// ─── Load Devices ──────────────────────────────────────
+async function loadDevices(userId) {
+    try {
+        const res = await fetch(`${API_BASE}/admin/users/${userId}/devices`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+
+        if (!res.ok) throw new Error('Failed to load devices');
+
+        const data = await res.json();
+        const devices = data.devices || [];
+
+        document.getElementById('devices-loading').style.display = 'none';
+        document.getElementById('devices-count-label').textContent = `${devices.length} device${devices.length !== 1 ? 's' : ''}`;
+
+        if (devices.length === 0) {
+            document.getElementById('devices-empty').style.display = 'flex';
+            document.getElementById('devices-list').style.display = 'none';
+            document.getElementById('btn-remove-all-devices').style.display = 'none';
+        } else {
+            document.getElementById('devices-empty').style.display = 'none';
+            document.getElementById('btn-remove-all-devices').style.display = 'flex';
+            renderDevicesList(devices, userId);
+        }
+    } catch (err) {
+        document.getElementById('devices-loading').style.display = 'none';
+        showToast('Failed to load devices', 'error');
+    }
+}
+
+// ─── Render Devices List ───────────────────────────────
+function renderDevicesList(devices, userId) {
+    const list = document.getElementById('devices-list');
+    list.innerHTML = '';
+    list.style.display = 'flex';
+
+    devices.forEach((device, index) => {
+        const card = document.createElement('div');
+        card.className = 'device-card';
+
+        const browserIcon = getBrowserIcon(device.browser);
+        const osIcon = getOsIcon(device.os);
+        const lastActive = device.last_active ? formatRelativeTime(device.last_active) : 'Unknown';
+        const createdAt = device.created_at ? formatDate(device.created_at) : 'Unknown';
+        const fingerprint = device.fingerprint ? device.fingerprint.substring(0, 12) + '...' : '—';
+
+        card.innerHTML = `
+            <div class="device-card-header">
+                <div class="device-icon-group">
+                    <div class="device-icon">${browserIcon}</div>
+                    <div class="device-details">
+                        <span class="device-name">${escapeHtml(device.device_name || 'Unknown Device')}</span>
+                        <span class="device-meta">${escapeHtml(device.browser || '?')} · ${escapeHtml(device.os || '?')}</span>
+                    </div>
+                </div>
+                <button class="btn-icon danger" onclick="removeDevice('${userId}', '${device.id}', '${escapeHtml(device.device_name || 'this device')}')" title="Remove device">
+                    <i data-lucide="x-circle" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+            <div class="device-card-body">
+                <div class="device-info-row">
+                    <span class="device-info-label">
+                        <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                        Last Active
+                    </span>
+                    <span class="device-info-value">${lastActive}</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">
+                        <i data-lucide="calendar" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                        First Seen
+                    </span>
+                    <span class="device-info-value">${createdAt}</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">
+                        <i data-lucide="globe" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                        IP Address
+                    </span>
+                    <span class="device-info-value">${escapeHtml(device.ip_address || 'Unknown')}</span>
+                </div>
+                <div class="device-info-row">
+                    <span class="device-info-label">
+                        <i data-lucide="fingerprint" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                        Fingerprint
+                    </span>
+                    <span class="device-info-value device-fingerprint">${escapeHtml(fingerprint)}</span>
+                </div>
+            </div>
+        `;
+
+        list.appendChild(card);
+    });
+
+    if (window.lucide) lucide.createIcons();
+}
+
+// ─── Remove Single Device ──────────────────────────────
+async function removeDevice(userId, deviceId, deviceName) {
+    if (!confirm(`Remove "${deviceName}"? The user will be logged out on this device.`)) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/users/${userId}/devices/${deviceId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+
+        if (!res.ok) throw new Error('Failed to remove device');
+
+        showToast('Device removed successfully', 'success');
+        await loadDevices(userId);
+        loadUsers(); // Refresh device counts in main table
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// ─── Remove All Devices ───────────────────────────────
+async function removeAllDevices() {
+    if (!devicesUserId) return;
+    if (!confirm(`Remove ALL devices for "${devicesUserName}"? They will be logged out everywhere.`)) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/users/${devicesUserId}/devices`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+
+        if (!res.ok) throw new Error('Failed to remove devices');
+
+        showToast('All devices removed successfully', 'success');
+        await loadDevices(devicesUserId);
+        loadUsers(); // Refresh device counts in main table
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// ─── Browser / OS Icon helpers ─────────────────────────
+function getBrowserIcon(browser) {
+    const b = (browser || '').toLowerCase();
+    if (b.includes('chrome')) return '🌐';
+    if (b.includes('firefox')) return '🦊';
+    if (b.includes('safari')) return '🧭';
+    if (b.includes('edge')) return '🔷';
+    if (b.includes('opera')) return '🔴';
+    return '🌐';
+}
+
+function getOsIcon(os) {
+    const o = (os || '').toLowerCase();
+    if (o.includes('windows')) return '🪟';
+    if (o.includes('mac') || o.includes('ios')) return '🍎';
+    if (o.includes('android')) return '🤖';
+    if (o.includes('linux')) return '🐧';
+    return '💻';
+}
+
 // ─── Toggle Password Visibility ────────────────────────
 function togglePasswordVisibility(inputId, btn) {
     const input = document.getElementById(inputId);
@@ -407,4 +662,19 @@ function formatDate(dateStr) {
     } else {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
+}
+
+function formatRelativeTime(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

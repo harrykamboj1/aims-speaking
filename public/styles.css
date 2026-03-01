@@ -2132,3 +2132,205 @@ body {
 [data-theme="dark"] .footer-link:hover {
   background: rgba(60, 131, 246, 0.15);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   EVALUATION REPORT STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Evaluation Content Container ─── */
+#eval-content {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+/* ─── Headers ─── */
+.eval-h1 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--brand-primary);
+  margin: 28px 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.15);
+  letter-spacing: -0.02em;
+}
+
+.eval-h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 24px 0 12px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(139, 92, 246, 0.06));
+  border-left: 3px solid var(--brand-primary);
+  border-radius: 0 10px 10px 0;
+}
+
+.eval-h3 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--brand-primary);
+  margin: 20px 0 8px;
+}
+
+.eval-h4 {
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 14px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+}
+
+/* ─── Paragraphs & Spacing ─── */
+.eval-p {
+  margin: 4px 0;
+  color: var(--text-primary);
+}
+
+.eval-spacer {
+  height: 8px;
+}
+
+/* ─── Tables ─── */
+.eval-table-wrap {
+  margin: 12px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.eval-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.eval-table thead th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: white;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+  border-bottom: none;
+}
+
+.eval-table tbody td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-primary);
+  vertical-align: top;
+}
+
+.eval-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.eval-table tbody tr:nth-child(even) {
+  background: rgba(59, 130, 246, 0.02);
+}
+
+.eval-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+[data-theme="dark"] .eval-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="dark"] .eval-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ─── Blockquotes (Model Answers) ─── */
+.eval-blockquote {
+  margin: 16px 0;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(16, 185, 129, 0.04));
+  border-left: 4px solid var(--brand-primary);
+  border-radius: 0 12px 12px 0;
+  font-style: italic;
+  color: var(--text-primary);
+  line-height: 1.8;
+}
+
+[data-theme="dark"] .eval-blockquote {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(16, 185, 129, 0.06));
+}
+
+/* ─── Lists ─── */
+.eval-list {
+  margin: 10px 0;
+  padding-left: 24px;
+}
+
+.eval-list li {
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.eval-list li::marker {
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+/* ─── Horizontal Rule (Section Divider) ─── */
+.eval-hr {
+  border: none;
+  height: 1px;
+  margin: 24px 0;
+  background: linear-gradient(90deg, transparent, var(--border-default), var(--brand-primary), var(--border-default), transparent);
+}
+
+/* ─── Inline Code ─── */
+.eval-code {
+  padding: 2px 7px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 6px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.88em;
+  color: var(--brand-primary);
+}
+
+/* ─── Emoji Icons ─── */
+.eval-icon-err,
+.eval-icon-ok,
+.eval-icon-tip,
+.eval-icon-chart,
+.eval-icon-clip,
+.eval-icon-write,
+.eval-icon-target,
+.eval-icon-note {
+  font-size: 1.1em;
+  vertical-align: middle;
+}
+
+/* ─── Strong text in eval ─── */
+#eval-content strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* ─── Dark mode refinements ─── */
+[data-theme="dark"] .eval-h1 {
+  border-bottom-color: rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="dark"] .eval-h2 {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.08));
+}
+
+[data-theme="dark"] .eval-table-wrap {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .eval-code {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.2);
+}
